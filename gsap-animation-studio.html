@@ -152,9 +152,11 @@ body {
 }
 
 .hover-highlight {
-  position:absolute; border:1px solid rgba(255,255,255,.5);
-  background:rgba(255,255,255,.04); border-radius:3px;
-  pointer-events: none;   /* highlight never intercepts */
+  position:absolute;
+  border:1px solid rgba(160,100,255,.6);
+  background:rgba(140,80,255,.06);
+  border-radius:3px;
+  pointer-events: none;
   display:none;
 }
 .hover-label {
@@ -165,12 +167,17 @@ body {
   pointer-events: none;
 }
 .selected-highlight {
-  position:absolute; border:1px solid rgba(255,255,255,.7);
-  background:rgba(255,255,255,.05); border-radius:3px;
-  pointer-events: none;   /* never intercept */
+  position:absolute;
+  border:2px solid #a855f7;
+  background:rgba(168,85,247,.08);
+  border-radius:3px;
+  pointer-events: none;
+  box-shadow:0 0 0 1px rgba(168,85,247,.2);
 }
 .selected-label {
-  position:absolute; background:var(--text); color:#111;
+  position:absolute;
+  background:#a855f7;
+  color:#fff;
   font-family:var(--mono); font-size:10px; font-weight:600;
   padding:2px 7px; border-radius:3px; white-space:nowrap; bottom:-22px; left:0;
   pointer-events: none;
@@ -310,7 +317,8 @@ body {
 }
 .right-panel {
   width:300px; min-width:220px; max-width:540px; flex-shrink:0;
-  background:var(--surface); display:flex; flex-direction:column; overflow:hidden;
+  background:var(--surface); display:flex; flex-direction:column;
+  overflow:hidden; min-height:0; /* lets flex children shrink+scroll */
 }
 .right-panel.collapsed { width:0!important; min-width:0; overflow:hidden; }
 .resize-handle.hidden  { display:none; }
@@ -329,11 +337,14 @@ body {
 .panel-tab.active { color:var(--text); border-bottom-color:var(--text); background:var(--surface); }
 .panel-tab:hover:not(.active) { color:var(--text2); }
 
-.panel-body { flex:1; overflow-y:auto; padding:12px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+.panel-body { flex:1; min-height:0; overflow-y:auto; padding:12px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
 .panel-body::-webkit-scrollbar { width:3px; }
 .panel-body::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
-.tab-content { display:none; }
-.tab-content.active { display:block; }
+.tab-content { display:none; min-height:0; }
+.tab-content.active {
+  display:flex; flex-direction:column;
+  flex:1; min-height:0; overflow:hidden;
+}
 .panel-footer { border-top:1px solid var(--border); padding:9px 12px; display:flex; gap:6px; background:var(--surface2); flex-shrink:0; }
 .panel-footer .btn { flex:1; justify-content:center; }
 
