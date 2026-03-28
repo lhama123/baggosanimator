@@ -358,6 +358,25 @@ body {
   font-family:var(--mono); font-size:11px; flex:1; caret-color:var(--text); min-width:0;
 }
 .selector-input::placeholder { color:var(--text3); font-style:italic; }
+
+/* Multi-select count badge shown in the selector row */
+.selection-count {
+  flex-shrink: 0;
+  background: rgba(168,85,247,.2);
+  border: 1px solid rgba(168,85,247,.4);
+  color: #c084fc;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Selected highlight label tweak for multi-select index badge */
+.selected-label.multi {
+  background: #7c3aed;
+}
 .anim-type-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:8px; }
 .anim-type-btn {
   background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
@@ -416,8 +435,64 @@ input[type="range"]:hover::-webkit-slider-thumb { background:var(--text); }
 .toggle.on { background:var(--surface4); border-color:var(--border3); }
 .toggle::after { content:''; position:absolute; width:10px; height:10px; background:var(--text3); border-radius:50%; top:2px; left:2px; transition:all .15s; }
 .toggle.on::after { left:16px; background:var(--text); }
-.st-panel { background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:9px; margin-bottom:5px; }
-.st-title { font-size:9px; font-weight:600; color:var(--text3); margin-bottom:7px; letter-spacing:.8px; text-transform:uppercase; font-family:var(--mono); }
+.st-panel {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:var(--r); padding:10px; margin-bottom:5px;
+  display:flex; flex-direction:column; gap:7px;
+}
+.st-title {
+  font-size:9px; font-weight:700; color:var(--text2);
+  letter-spacing:1px; text-transform:uppercase; font-family:var(--mono);
+  padding-bottom:6px; border-bottom:1px solid var(--border);
+}
+/* hint text next to label */
+.field-label-hint { color:var(--text4); font-weight:400; letter-spacing:0; text-transform:none; font-size:9px; }
+
+/* Scrub row: toggle + number side by side */
+.st-scrub-row { display:flex; align-items:center; gap:6px; }
+.st-scrub-num { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+
+/* Section label inside ST panel */
+.st-section-label {
+  font-size:9px; font-weight:600; color:var(--text3);
+  letter-spacing:1px; text-transform:uppercase; font-family:var(--mono);
+  margin-top:2px;
+}
+
+/* toggleActions preset chips */
+.st-ta-presets { display:flex; flex-wrap:wrap; gap:4px; }
+.st-ta-chip {
+  padding:3px 8px; border-radius:3px;
+  background:var(--surface3); border:1px solid var(--border);
+  font-size:10px; color:var(--text3); cursor:pointer;
+  font-family:var(--mono); transition:all .12s; user-select:none;
+}
+.st-ta-chip:hover { border-color:var(--border2); color:var(--text2); }
+.st-ta-chip.active {
+  background:rgba(168,85,247,.15);
+  border-color:rgba(168,85,247,.4);
+  color:#c084fc;
+}
+
+/* custom toggleActions selects */
+.st-ta-custom { margin-top:2px; }
+
+/* Pin / Markers / Once flag pills */
+.st-flags-row { display:flex; gap:5px; margin-top:2px; }
+.st-flag {
+  flex:1; display:flex; align-items:center; justify-content:center; gap:4px;
+  padding:5px 4px; border-radius:var(--r);
+  background:var(--surface3); border:1px solid var(--border);
+  font-size:10px; color:var(--text3); cursor:pointer;
+  font-family:var(--mono); transition:all .12s; user-select:none;
+}
+.st-flag:hover { border-color:var(--border2); color:var(--text2); }
+.st-flag.active {
+  background:rgba(168,85,247,.15);
+  border-color:rgba(168,85,247,.4);
+  color:#c084fc;
+}
+.st-flag-icon { font-size:11px; }
 .divider { height:1px; background:var(--border); margin:9px 0; }
 .add-anim-btn {
   width:100%; padding:8px; background:transparent; border:1px dashed var(--border2);

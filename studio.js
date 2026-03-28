@@ -25,6 +25,12 @@ const state = {
   selectedAnimId:   null,
   scrollTriggerOn:  false,
   scrubOn:          false,
+  scrubAmount:      1,        // smoothing seconds (0 = scroll-linked)
+  stPin:            false,
+  stMarkers:        false,
+  stOnce:           false,
+  stToggleActions:  'play none none none',
+  stCustomTA:       false,
   timelineOn:       false,
   panelCollapsed:   false,
   panelWidth:       300,
@@ -37,7 +43,7 @@ const state = {
   // iframe bridge
   frameReady:       false,
   hoverEl:          null,   // {selector, rect}
-  selectedSelector: '',
+  selections:        [],   // [{selector, rect}] — multi-select array
 };
 
 // Shorthand: get current page's animations[]
@@ -155,16 +161,40 @@ const FRAME_SCRIPT = `
     window.parent.postMessage({ type: 'HOVER_OUT' }, '*');
   });
 
-  // Click to select
+  // Click to select (shift = add to selection, plain click = replace)
   document.addEventListener('click', e => {
     if (!selectMode) return;
     e.preventDefault(); e.stopPropagation();
     const el = e.target;
-    if (!el || el === document.body) return;
-    const sel = getSelector(el);
+    if (!el || el === document.body || el === document.documentElement) return;
+    const sel  = getSelector(el);
     const rect = getRect(el);
-    window.parent.postMessage({ type: 'SELECT', selector: sel, rect, tag: el.tagName.toLowerCase() }, '*');
+    window.parent.postMessage({
+      type: 'SELECT',
+      selector: sel,
+      rect,
+      tag: el.tagName.toLowerCase(),
+      additive: e.shiftKey || e.metaKey || e.ctrlKey,
+    }, '*');
   }, true);
+
+  // On scroll: re-broadcast rects of all selected elements so parent can reposition highlights
+  window.addEventListener('scroll', () => {
+    window.parent.postMessage({ type: 'SCROLL', scrollY: window.scrollY }, '*');
+  }, { passive: true });
+
+  // Let parent ask for fresh rects of specific selectors
+  window.addEventListener('message', e => {
+    if (e.data.type === 'GET_RECTS') {
+      const rects = e.data.selectors.map(sel => {
+        try {
+          const el = document.querySelector(sel);
+          return el ? { selector: sel, rect: getRect(el) } : null;
+        } catch(_) { return null; }
+      }).filter(Boolean);
+      window.parent.postMessage({ type: 'RECTS_RESULT', rects }, '*');
+    }
+  });
 
   // Link interception — navigate within studio
   document.addEventListener('click', e => {
@@ -245,7 +275,23 @@ window.addEventListener('message', e => {
 
     case 'SELECT':
       if (!state.selectMode) return;
-      handleSelect(d.selector, d.rect);
+      handleSelect(d.selector, d.rect, d.additive);
+      break;
+
+    case 'SCROLL':
+      // Frame scrolled — request fresh rects for all selections so highlights follow
+      if (state.selections.length > 0) {
+        sendToFrame('GET_RECTS', { selectors: state.selections.map(s => s.selector) });
+      }
+      break;
+
+    case 'RECTS_RESULT':
+      // Update selection rects and repaint highlights
+      d.rects.forEach(({ selector, rect }) => {
+        const s = state.selections.find(s => s.selector === selector);
+        if (s) s.rect = rect;
+      });
+      repaintSelectedHighlights();
       break;
 
     case 'NAVIGATE':
@@ -275,33 +321,72 @@ function showHoverHighlight(selector, rect) {
   hoverLabel.textContent = selector;
 }
 
-function handleSelect(selector, rect) {
-  state.selectedSelector = selector;
-  selectorInput.value    = selector;
+function handleSelect(selector, rect, additive = false) {
+  const existingIdx = state.selections.findIndex(s => s.selector === selector);
+
+  if (additive) {
+    // Shift/Cmd+click: toggle this element in the selection
+    if (existingIdx !== -1) {
+      // Already selected — deselect it
+      state.selections.splice(existingIdx, 1);
+    } else {
+      state.selections.push({ selector, rect });
+    }
+  } else {
+    // Plain click: replace selection (unless clicking the only selected element)
+    if (state.selections.length === 1 && existingIdx === 0) {
+      // Clicking the only selected element deselects it
+      state.selections = [];
+    } else {
+      state.selections = [{ selector, rect }];
+    }
+  }
+
+  if (state.selections.length === 0) {
+    clearSelected();
+    return;
+  }
+
+  // Build comma-joined selector string for GSAP array syntax
+  const combined = state.selections.map(s => s.selector).join(', ');
+  selectorInput.value = combined;
 
   emptyState.style.display         = 'none';
   animConfig.style.display         = 'block';
   instructionOverlay.style.display = 'none';
 
   if (state.panelCollapsed) togglePanel();
-  showSelectedHighlight(selector, rect);
-  setStatus(`Selected: ${selector}`);
+  repaintSelectedHighlights();
+  const count = state.selections.length;
+  setStatus(count === 1
+    ? `Selected: ${selector}`
+    : `${count} elements selected — shift+click to add/remove`);
   syncFromFields();
 }
 
-function showSelectedHighlight(selector, rect) {
+// Paint one highlight div per selected element
+function repaintSelectedHighlights() {
   selectedHighlights.innerHTML = '';
-  const top = rect.top - rect.scrollY;
+  const n = state.selections.length;
 
-  const div = document.createElement('div');
-  div.className = 'selected-highlight';
-  div.style.cssText = `left:${rect.left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px`;
+  // Update count badge
+  const badge = document.getElementById('selection-count');
+  if (badge) {
+    if (n > 1) { badge.textContent = `${n} selected`; badge.style.display = 'inline'; }
+    else        { badge.style.display = 'none'; }
+  }
 
-  const lbl = document.createElement('div');
-  lbl.className = 'selected-label';
-  lbl.textContent = selector;
-  div.appendChild(lbl);
-  selectedHighlights.appendChild(div);
+  state.selections.forEach(({ selector, rect }, i) => {
+    const top = rect.top - rect.scrollY;
+    const div = document.createElement('div');
+    div.className = 'selected-highlight';
+    div.style.cssText = `left:${rect.left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px`;
+    const lbl = document.createElement('div');
+    lbl.className = 'selected-label' + (n > 1 ? ' multi' : '');
+    lbl.textContent = n > 1 ? `[${i + 1}] ${selector}` : selector;
+    div.appendChild(lbl);
+    selectedHighlights.appendChild(div);
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -335,7 +420,7 @@ function switchPage(id) {
   state.activePageId   = id;
   state.editingId      = null;
   state.selectedAnimId = null;
-  state.selectedSelector = '';
+  state.selections     = [];
   state.frameReady     = false;
 
   clearSelected();
@@ -755,13 +840,15 @@ function toggleSelectMode() {
 }
 
 function clearSelected() {
-  state.selectedSelector = '';
+  state.selections       = [];
   selectorInput.value    = '';
   selectedHighlights.innerHTML  = '';
   hoverHighlight.style.display  = 'none';
   emptyState.style.display      = 'flex';
   animConfig.style.display      = 'none';
-  setStatus('Ready — select an element to begin');
+  const badge = document.getElementById('selection-count');
+  if (badge) badge.style.display = 'none';
+  setStatus('Ready — click to select · shift+click to multi-select');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -898,7 +985,80 @@ function toggleScrollTrigger() {
 function toggleScrub() {
   state.scrubOn = !state.scrubOn;
   document.getElementById('scrub-toggle').classList.toggle('on', state.scrubOn);
+  document.getElementById('scrub-num-wrap').style.display = state.scrubOn ? 'flex' : 'none';
   syncFromFields();
+}
+
+// ST flag pills (pin / markers / once)
+function toggleSTFlag(id) {
+  const map = { 'st-pin': 'stPin', 'st-markers': 'stMarkers', 'st-once': 'stOnce' };
+  const key = map[id]; if (!key) return;
+  state[key] = !state[key];
+  document.getElementById(id).classList.toggle('active', state[key]);
+  syncFromFields();
+}
+
+// toggleActions preset chips
+function applyTAPreset(value, chipEl) {
+  document.querySelectorAll('.st-ta-chip').forEach(c => c.classList.remove('active'));
+  chipEl.classList.add('active');
+  const customWrap = document.getElementById('st-ta-custom');
+  if (value === 'custom') {
+    state.stCustomTA = true;
+    customWrap.style.display = 'block';
+    buildCustomTA();
+  } else {
+    state.stCustomTA = false;
+    state.stToggleActions = value;
+    customWrap.style.display = 'none';
+    syncFromFields();
+  }
+}
+
+// Build toggleActions string from the 4 custom selects
+function buildCustomTA() {
+  const enter     = document.getElementById('ta-enter').value;
+  const leave     = document.getElementById('ta-leave').value;
+  const enterBack = document.getElementById('ta-enter-back').value;
+  const leaveBack = document.getElementById('ta-leave-back').value;
+  state.stToggleActions = `${enter} ${leave} ${enterBack} ${leaveBack}`;
+  document.getElementById('st-toggle-actions').value = state.stToggleActions;
+  syncFromFields();
+}
+
+// Activate the correct preset chip for a given toggleActions string
+function syncTAChips(value) {
+  const chips = document.querySelectorAll('.st-ta-chip');
+  let matched = false;
+  chips.forEach(c => {
+    c.classList.remove('active');
+    if (c.dataset.preset === value) { c.classList.add('active'); matched = true; }
+  });
+  // Stamp data-preset onto chips if not already done
+  if (!chips[0].dataset.preset) {
+    const presets = ['play none none none','play none none reverse','restart none none none','play none none reset','play pause resume reverse','custom'];
+    chips.forEach((c,i) => c.dataset.preset = presets[i]);
+  }
+  // Re-check after stamping
+  let found = false;
+  chips.forEach(c => {
+    c.classList.remove('active');
+    if (c.dataset.preset === value) { c.classList.add('active'); found = true; }
+  });
+  if (!found) {
+    // mark custom chip active and populate selects
+    document.getElementById('st-ta-custom-chip').classList.add('active');
+    document.getElementById('st-ta-custom').style.display = 'block';
+    const parts = value.split(' ');
+    if (parts.length === 4) {
+      const ids = ['ta-enter','ta-leave','ta-enter-back','ta-leave-back'];
+      ids.forEach((id,i) => { const el=document.getElementById(id); if(el) el.value=parts[i]; });
+    }
+    state.stCustomTA = true;
+  } else {
+    document.getElementById('st-ta-custom').style.display = state.stCustomTA ? 'block' : 'none';
+    state.stCustomTA = false;
+  }
 }
 function toggleTimeline() {
   state.timelineOn = !state.timelineOn;
@@ -919,10 +1079,16 @@ function readFields() {
     opacity:       parseFloat(document.getElementById('opacity-input').value),
     rotation:      parseFloat(document.getElementById('rotation-input').value)|| 0,
     stagger:       parseFloat(document.getElementById('stagger-input').value) || 0,
-    scrollTrigger: state.scrollTriggerOn,
-    stStart:       document.getElementById('st-start').value,
-    stEnd:         document.getElementById('st-end').value,
-    scrub:         state.scrubOn,
+    scrollTrigger:     state.scrollTriggerOn,
+    stTrigger:         document.getElementById('st-trigger').value.trim(),
+    stStart:           document.getElementById('st-start').value,
+    stEnd:             document.getElementById('st-end').value,
+    scrub:             state.scrubOn,
+    scrubAmount:       parseFloat(document.getElementById('scrub-amount').value) || 1,
+    stToggleActions:   document.getElementById('st-toggle-actions').value || 'play none none none',
+    stPin:             state.stPin,
+    stMarkers:         state.stMarkers,
+    stOnce:            state.stOnce,
     inTimeline:    state.timelineOn,
   };
 }
@@ -937,13 +1103,29 @@ function populateFields(p) {
   const e=document.getElementById('ease-input');
   for(const o of e.options) if(o.value===p.ease){e.value=p.ease;break;}
   document.getElementById('gsap-method').value = p.method||'from';
-  state.scrollTriggerOn=!!p.scrollTrigger; state.scrubOn=!!p.scrub; state.timelineOn=!!p.inTimeline;
-  document.getElementById('scroll-toggle').classList.toggle('on',state.scrollTriggerOn);
-  document.getElementById('st-panel').style.display=state.scrollTriggerOn?'block':'none';
-  document.getElementById('scrub-toggle').classList.toggle('on',state.scrubOn);
-  document.getElementById('timeline-toggle').classList.toggle('on',state.timelineOn);
-  if(p.stStart) setF('st-start',p.stStart);
-  if(p.stEnd)   setF('st-end',p.stEnd);
+  state.scrollTriggerOn  = !!p.scrollTrigger;
+  state.scrubOn          = !!p.scrub;
+  state.scrubAmount      = p.scrubAmount ?? 1;
+  state.stPin            = !!p.stPin;
+  state.stMarkers        = !!p.stMarkers;
+  state.stOnce           = !!p.stOnce;
+  state.stToggleActions  = p.stToggleActions || 'play none none none';
+  state.timelineOn       = !!p.inTimeline;
+
+  document.getElementById('scroll-toggle').classList.toggle('on', state.scrollTriggerOn);
+  document.getElementById('st-panel').style.display = state.scrollTriggerOn ? 'block' : 'none';
+  document.getElementById('scrub-toggle').classList.toggle('on', state.scrubOn);
+  document.getElementById('scrub-num-wrap').style.display = state.scrubOn ? 'flex' : 'none';
+  document.getElementById('scrub-amount').value = state.scrubAmount;
+  document.getElementById('timeline-toggle').classList.toggle('on', state.timelineOn);
+  document.getElementById('st-pin').classList.toggle('active', state.stPin);
+  document.getElementById('st-markers').classList.toggle('active', state.stMarkers);
+  document.getElementById('st-once').classList.toggle('active', state.stOnce);
+  document.getElementById('st-toggle-actions').value = state.stToggleActions;
+  if (p.stStart)   setF('st-start',   p.stStart);
+  if (p.stEnd)     setF('st-end',     p.stEnd);
+  if (p.stTrigger) setF('st-trigger', p.stTrigger);
+  syncTAChips(state.stToggleActions);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -999,8 +1181,17 @@ function parseGSAPCode(code) {
       ease: obj.ease||'power3.out', duration: obj.duration??1, delay: obj.delay??0,
       x: obj.x??0, y: obj.y??0, scale: obj.scale??1, opacity: obj.opacity??(method==='to'?1:0),
       rotation: obj.rotation??0, stagger: obj.stagger??0,
-      scrollTrigger:!!st, stStart:st?.start||'top 80%', stEnd:st?.end||'bottom 20%',
-      scrub:!!st?.scrub, inTimeline };
+      scrollTrigger: !!st,
+      stTrigger:     st?.trigger !== selector ? (st?.trigger || '') : '',
+      stStart:       st?.start || 'top 80%',
+      stEnd:         st?.end   || 'bottom 20%',
+      scrub:         !!(st?.scrub !== undefined && st?.scrub !== false),
+      scrubAmount:   typeof st?.scrub === 'number' ? st.scrub : 1,
+      stToggleActions: st?.toggleActions || 'play none none none',
+      stPin:         !!st?.pin,
+      stMarkers:     !!st?.markers,
+      stOnce:        !!st?.once,
+      inTimeline };
   }
   let m;
   while ((m=callRe.exec(code))!==null) { try { results.push(objToAnim(m[1],m[2],extractObj(m[3]),false)); } catch(e){} }
@@ -1213,7 +1404,24 @@ function buildAnimObj(p) {
   if(p.opacity!==1)o.opacity=p.opacity; if(p.rotation!==0)o.rotation=p.rotation;
   o.duration=p.duration; if(p.delay>0)o.delay=p.delay; o.ease=p.ease;
   if(p.stagger>0)o.stagger=p.stagger;
-  if(p.scrollTrigger){const st={trigger:p.selector,start:p.stStart,end:p.stEnd};if(p.scrub)st.scrub=true;o.scrollTrigger=st;}
+  if (p.scrollTrigger) {
+    const trigger = p.stTrigger || p.selector;
+    const st = { trigger };
+    if (p.stStart)  st.start = p.stStart;
+    if (p.stEnd)    st.end   = p.stEnd;
+    // scrub: true (locked) or number (smoothing)
+    if (p.scrub) st.scrub = (p.scrubAmount && p.scrubAmount > 0) ? p.scrubAmount : true;
+    // toggleActions — omit if scrub is on (they conflict) or if it's the default
+    if (!p.scrub && p.stToggleActions && p.stToggleActions !== 'play none none none') {
+      st.toggleActions = p.stToggleActions;
+    } else if (!p.scrub) {
+      st.toggleActions = p.stToggleActions;
+    }
+    if (p.stPin)     st.pin     = true;
+    if (p.stMarkers) st.markers = true;
+    if (p.stOnce)    st.once    = true;
+    o.scrollTrigger = st;
+  }
   return o;
 }
 function objToCode(obj,ind='  '){
@@ -1331,3 +1539,19 @@ updateCDN();
 renderAnimationsList();
 updateUndoButtons();
 updatePageCount();
+
+// Stamp data-preset on toggleActions chips so syncTAChips works immediately
+(function stampTAPresets() {
+  const presets = [
+    'play none none none',
+    'play none none reverse',
+    'restart none none none',
+    'play none none reset',
+    'play pause resume reverse',
+    'custom',
+  ];
+  document.querySelectorAll('.st-ta-chip').forEach((c, i) => {
+    c.dataset.preset = presets[i] || 'custom';
+  });
+  syncTAChips('play none none none');
+})();

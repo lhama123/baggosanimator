@@ -365,6 +365,25 @@ body {
   font-family:var(--mono); font-size:11px; flex:1; caret-color:var(--text); min-width:0;
 }
 .selector-input::placeholder { color:var(--text3); font-style:italic; }
+
+/* Multi-select count badge shown in the selector row */
+.selection-count {
+  flex-shrink: 0;
+  background: rgba(168,85,247,.2);
+  border: 1px solid rgba(168,85,247,.4);
+  color: #c084fc;
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+/* Selected highlight label tweak for multi-select index badge */
+.selected-label.multi {
+  background: #7c3aed;
+}
 .anim-type-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:8px; }
 .anim-type-btn {
   background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
@@ -423,8 +442,64 @@ input[type="range"]:hover::-webkit-slider-thumb { background:var(--text); }
 .toggle.on { background:var(--surface4); border-color:var(--border3); }
 .toggle::after { content:''; position:absolute; width:10px; height:10px; background:var(--text3); border-radius:50%; top:2px; left:2px; transition:all .15s; }
 .toggle.on::after { left:16px; background:var(--text); }
-.st-panel { background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:9px; margin-bottom:5px; }
-.st-title { font-size:9px; font-weight:600; color:var(--text3); margin-bottom:7px; letter-spacing:.8px; text-transform:uppercase; font-family:var(--mono); }
+.st-panel {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:var(--r); padding:10px; margin-bottom:5px;
+  display:flex; flex-direction:column; gap:7px;
+}
+.st-title {
+  font-size:9px; font-weight:700; color:var(--text2);
+  letter-spacing:1px; text-transform:uppercase; font-family:var(--mono);
+  padding-bottom:6px; border-bottom:1px solid var(--border);
+}
+/* hint text next to label */
+.field-label-hint { color:var(--text4); font-weight:400; letter-spacing:0; text-transform:none; font-size:9px; }
+
+/* Scrub row: toggle + number side by side */
+.st-scrub-row { display:flex; align-items:center; gap:6px; }
+.st-scrub-num { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+
+/* Section label inside ST panel */
+.st-section-label {
+  font-size:9px; font-weight:600; color:var(--text3);
+  letter-spacing:1px; text-transform:uppercase; font-family:var(--mono);
+  margin-top:2px;
+}
+
+/* toggleActions preset chips */
+.st-ta-presets { display:flex; flex-wrap:wrap; gap:4px; }
+.st-ta-chip {
+  padding:3px 8px; border-radius:3px;
+  background:var(--surface3); border:1px solid var(--border);
+  font-size:10px; color:var(--text3); cursor:pointer;
+  font-family:var(--mono); transition:all .12s; user-select:none;
+}
+.st-ta-chip:hover { border-color:var(--border2); color:var(--text2); }
+.st-ta-chip.active {
+  background:rgba(168,85,247,.15);
+  border-color:rgba(168,85,247,.4);
+  color:#c084fc;
+}
+
+/* custom toggleActions selects */
+.st-ta-custom { margin-top:2px; }
+
+/* Pin / Markers / Once flag pills */
+.st-flags-row { display:flex; gap:5px; margin-top:2px; }
+.st-flag {
+  flex:1; display:flex; align-items:center; justify-content:center; gap:4px;
+  padding:5px 4px; border-radius:var(--r);
+  background:var(--surface3); border:1px solid var(--border);
+  font-size:10px; color:var(--text3); cursor:pointer;
+  font-family:var(--mono); transition:all .12s; user-select:none;
+}
+.st-flag:hover { border-color:var(--border2); color:var(--text2); }
+.st-flag.active {
+  background:rgba(168,85,247,.15);
+  border-color:rgba(168,85,247,.4);
+  color:#c084fc;
+}
+.st-flag-icon { font-size:11px; }
 .divider { height:1px; background:var(--border); margin:9px 0; }
 .add-anim-btn {
   width:100%; padding:8px; background:transparent; border:1px dashed var(--border2);
@@ -697,10 +772,14 @@ input[type="range"]:hover::-webkit-slider-thumb { background:var(--text); }
             <button class="btn btn-sm" onclick="cancelEdit()">Cancel</button>
           </div>
 
-          <div class="section-header">Target Selector</div>
+          <div class="section-header" style="display:flex;align-items:center;justify-content:space-between">
+            Target Selector
+            <span style="color:var(--text4);font-weight:400;letter-spacing:0;text-transform:none;font-size:9px">shift+click to multi-select</span>
+          </div>
           <div class="selector-display">
             <span style="color:var(--text3)">⌖</span>
             <input class="selector-input" id="selector-input" type="text" placeholder="click element…"/>
+            <span class="selection-count" id="selection-count" style="display:none">1</span>
           </div>
 
           <div class="section-header">Type</div>
@@ -778,15 +857,99 @@ input[type="range"]:hover::-webkit-slider-thumb { background:var(--text); }
             <div class="toggle" id="scroll-toggle" onclick="toggleScrollTrigger()"></div>
           </div>
           <div class="st-panel" id="st-panel" style="display:none">
-            <div class="st-title">ScrollTrigger options</div>
+            <div class="st-title">ScrollTrigger</div>
+
+            <!-- Trigger element -->
+            <div class="field" style="margin-bottom:6px">
+              <div class="field-label">Trigger element <span class="field-label-hint">(defaults to selector)</span></div>
+              <input class="field-input" type="text" id="st-trigger" placeholder="leave blank = same as selector" oninput="syncFromFields()">
+            </div>
+
+            <!-- Start / End -->
             <div class="field-row">
               <div class="field"><div class="field-label">Start</div><input class="field-input" type="text" id="st-start" value="top 80%" oninput="syncFromFields()"></div>
               <div class="field"><div class="field-label">End</div><input class="field-input" type="text" id="st-end" value="bottom 20%" oninput="syncFromFields()"></div>
             </div>
-            <div class="toggle-row" style="margin-bottom:0">
-              <span class="toggle-label">Scrub</span>
-              <div class="toggle" id="scrub-toggle" onclick="toggleScrub()"></div>
+
+            <!-- Scrub row: toggle + smoothing number -->
+            <div class="st-scrub-row">
+              <div class="toggle-row" style="margin-bottom:0;flex:1">
+                <span class="toggle-label">Scrub</span>
+                <div class="toggle" id="scrub-toggle" onclick="toggleScrub()"></div>
+              </div>
+              <div class="st-scrub-num" id="scrub-num-wrap" style="display:none">
+                <input class="field-input" type="number" id="scrub-amount" value="1" min="0" step="0.5"
+                       title="Smoothing (seconds). 0 = linked to scroll, 1+ = lag"
+                       style="width:60px;text-align:center" oninput="syncFromFields()">
+                <span class="field-label" style="white-space:nowrap">s lag</span>
+              </div>
             </div>
+
+            <!-- toggleActions -->
+            <div class="st-section-label">toggleActions</div>
+            <div class="st-ta-presets" id="st-ta-presets">
+              <div class="st-ta-chip active" onclick="applyTAPreset('play none none none',this)">play once</div>
+              <div class="st-ta-chip" onclick="applyTAPreset('play none none reverse',this)">↩ reverse</div>
+              <div class="st-ta-chip" onclick="applyTAPreset('restart none none none',this)">restart</div>
+              <div class="st-ta-chip" onclick="applyTAPreset('play none none reset',this)">reset</div>
+              <div class="st-ta-chip" onclick="applyTAPreset('play pause resume reverse',this)">toggle</div>
+              <div class="st-ta-chip" id="st-ta-custom-chip" onclick="applyTAPreset('custom',this)">custom…</div>
+            </div>
+            <!-- custom selects — shown only when custom preset active -->
+            <div class="st-ta-custom" id="st-ta-custom" style="display:none">
+              <div class="field-row" style="margin-bottom:4px">
+                <div class="field"><div class="field-label">onEnter</div>
+                  <select class="field-input" id="ta-enter" onchange="buildCustomTA()">
+                    <option value="play">play</option><option value="pause">pause</option>
+                    <option value="resume">resume</option><option value="reverse">reverse</option>
+                    <option value="restart">restart</option><option value="reset">reset</option>
+                    <option value="complete">complete</option><option value="none">none</option>
+                  </select>
+                </div>
+                <div class="field"><div class="field-label">onLeave</div>
+                  <select class="field-input" id="ta-leave" onchange="buildCustomTA()">
+                    <option value="none">none</option><option value="pause">pause</option>
+                    <option value="play">play</option><option value="resume">resume</option>
+                    <option value="reverse">reverse</option><option value="restart">restart</option>
+                    <option value="reset">reset</option><option value="complete">complete</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field"><div class="field-label">onEnterBack</div>
+                  <select class="field-input" id="ta-enter-back" onchange="buildCustomTA()">
+                    <option value="none">none</option><option value="resume">resume</option>
+                    <option value="play">play</option><option value="pause">pause</option>
+                    <option value="reverse">reverse</option><option value="restart">restart</option>
+                    <option value="reset">reset</option><option value="complete">complete</option>
+                  </select>
+                </div>
+                <div class="field"><div class="field-label">onLeaveBack</div>
+                  <select class="field-input" id="ta-leave-back" onchange="buildCustomTA()">
+                    <option value="none">none</option><option value="reverse">reverse</option>
+                    <option value="play">play</option><option value="pause">pause</option>
+                    <option value="resume">resume</option><option value="restart">restart</option>
+                    <option value="reset">reset</option><option value="complete">complete</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <!-- hidden input storing the composed toggleActions string -->
+            <input type="hidden" id="st-toggle-actions" value="play none none none">
+
+            <!-- Pin / Markers / Once -->
+            <div class="st-flags-row">
+              <div class="st-flag" onclick="toggleSTFlag('st-pin')" id="st-pin">
+                <span class="st-flag-icon">📌</span> pin
+              </div>
+              <div class="st-flag" onclick="toggleSTFlag('st-markers')" id="st-markers">
+                <span class="st-flag-icon">⬚</span> markers
+              </div>
+              <div class="st-flag" onclick="toggleSTFlag('st-once')" id="st-once">
+                <span class="st-flag-icon">①</span> once
+              </div>
+            </div>
+
           </div>
           <div class="toggle-row">
             <span class="toggle-label">Add to timeline (tl)</span>
@@ -943,6 +1106,12 @@ const state = {
   selectedAnimId:   null,
   scrollTriggerOn:  false,
   scrubOn:          false,
+  scrubAmount:      1,        // smoothing seconds (0 = scroll-linked)
+  stPin:            false,
+  stMarkers:        false,
+  stOnce:           false,
+  stToggleActions:  'play none none none',
+  stCustomTA:       false,
   timelineOn:       false,
   panelCollapsed:   false,
   panelWidth:       300,
@@ -955,7 +1124,7 @@ const state = {
   // iframe bridge
   frameReady:       false,
   hoverEl:          null,   // {selector, rect}
-  selectedSelector: '',
+  selections:        [],   // [{selector, rect}] — multi-select array
 };
 
 // Shorthand: get current page's animations[]
@@ -1073,16 +1242,40 @@ const FRAME_SCRIPT = `
     window.parent.postMessage({ type: 'HOVER_OUT' }, '*');
   });
 
-  // Click to select
+  // Click to select (shift = add to selection, plain click = replace)
   document.addEventListener('click', e => {
     if (!selectMode) return;
     e.preventDefault(); e.stopPropagation();
     const el = e.target;
-    if (!el || el === document.body) return;
-    const sel = getSelector(el);
+    if (!el || el === document.body || el === document.documentElement) return;
+    const sel  = getSelector(el);
     const rect = getRect(el);
-    window.parent.postMessage({ type: 'SELECT', selector: sel, rect, tag: el.tagName.toLowerCase() }, '*');
+    window.parent.postMessage({
+      type: 'SELECT',
+      selector: sel,
+      rect,
+      tag: el.tagName.toLowerCase(),
+      additive: e.shiftKey || e.metaKey || e.ctrlKey,
+    }, '*');
   }, true);
+
+  // On scroll: re-broadcast rects of all selected elements so parent can reposition highlights
+  window.addEventListener('scroll', () => {
+    window.parent.postMessage({ type: 'SCROLL', scrollY: window.scrollY }, '*');
+  }, { passive: true });
+
+  // Let parent ask for fresh rects of specific selectors
+  window.addEventListener('message', e => {
+    if (e.data.type === 'GET_RECTS') {
+      const rects = e.data.selectors.map(sel => {
+        try {
+          const el = document.querySelector(sel);
+          return el ? { selector: sel, rect: getRect(el) } : null;
+        } catch(_) { return null; }
+      }).filter(Boolean);
+      window.parent.postMessage({ type: 'RECTS_RESULT', rects }, '*');
+    }
+  });
 
   // Link interception — navigate within studio
   document.addEventListener('click', e => {
@@ -1163,7 +1356,23 @@ window.addEventListener('message', e => {
 
     case 'SELECT':
       if (!state.selectMode) return;
-      handleSelect(d.selector, d.rect);
+      handleSelect(d.selector, d.rect, d.additive);
+      break;
+
+    case 'SCROLL':
+      // Frame scrolled — request fresh rects for all selections so highlights follow
+      if (state.selections.length > 0) {
+        sendToFrame('GET_RECTS', { selectors: state.selections.map(s => s.selector) });
+      }
+      break;
+
+    case 'RECTS_RESULT':
+      // Update selection rects and repaint highlights
+      d.rects.forEach(({ selector, rect }) => {
+        const s = state.selections.find(s => s.selector === selector);
+        if (s) s.rect = rect;
+      });
+      repaintSelectedHighlights();
       break;
 
     case 'NAVIGATE':
@@ -1193,33 +1402,72 @@ function showHoverHighlight(selector, rect) {
   hoverLabel.textContent = selector;
 }
 
-function handleSelect(selector, rect) {
-  state.selectedSelector = selector;
-  selectorInput.value    = selector;
+function handleSelect(selector, rect, additive = false) {
+  const existingIdx = state.selections.findIndex(s => s.selector === selector);
+
+  if (additive) {
+    // Shift/Cmd+click: toggle this element in the selection
+    if (existingIdx !== -1) {
+      // Already selected — deselect it
+      state.selections.splice(existingIdx, 1);
+    } else {
+      state.selections.push({ selector, rect });
+    }
+  } else {
+    // Plain click: replace selection (unless clicking the only selected element)
+    if (state.selections.length === 1 && existingIdx === 0) {
+      // Clicking the only selected element deselects it
+      state.selections = [];
+    } else {
+      state.selections = [{ selector, rect }];
+    }
+  }
+
+  if (state.selections.length === 0) {
+    clearSelected();
+    return;
+  }
+
+  // Build comma-joined selector string for GSAP array syntax
+  const combined = state.selections.map(s => s.selector).join(', ');
+  selectorInput.value = combined;
 
   emptyState.style.display         = 'none';
   animConfig.style.display         = 'block';
   instructionOverlay.style.display = 'none';
 
   if (state.panelCollapsed) togglePanel();
-  showSelectedHighlight(selector, rect);
-  setStatus(`Selected: ${selector}`);
+  repaintSelectedHighlights();
+  const count = state.selections.length;
+  setStatus(count === 1
+    ? `Selected: ${selector}`
+    : `${count} elements selected — shift+click to add/remove`);
   syncFromFields();
 }
 
-function showSelectedHighlight(selector, rect) {
+// Paint one highlight div per selected element
+function repaintSelectedHighlights() {
   selectedHighlights.innerHTML = '';
-  const top = rect.top - rect.scrollY;
+  const n = state.selections.length;
 
-  const div = document.createElement('div');
-  div.className = 'selected-highlight';
-  div.style.cssText = `left:${rect.left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px`;
+  // Update count badge
+  const badge = document.getElementById('selection-count');
+  if (badge) {
+    if (n > 1) { badge.textContent = `${n} selected`; badge.style.display = 'inline'; }
+    else        { badge.style.display = 'none'; }
+  }
 
-  const lbl = document.createElement('div');
-  lbl.className = 'selected-label';
-  lbl.textContent = selector;
-  div.appendChild(lbl);
-  selectedHighlights.appendChild(div);
+  state.selections.forEach(({ selector, rect }, i) => {
+    const top = rect.top - rect.scrollY;
+    const div = document.createElement('div');
+    div.className = 'selected-highlight';
+    div.style.cssText = `left:${rect.left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px`;
+    const lbl = document.createElement('div');
+    lbl.className = 'selected-label' + (n > 1 ? ' multi' : '');
+    lbl.textContent = n > 1 ? `[${i + 1}] ${selector}` : selector;
+    div.appendChild(lbl);
+    selectedHighlights.appendChild(div);
+  });
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1253,7 +1501,7 @@ function switchPage(id) {
   state.activePageId   = id;
   state.editingId      = null;
   state.selectedAnimId = null;
-  state.selectedSelector = '';
+  state.selections     = [];
   state.frameReady     = false;
 
   clearSelected();
@@ -1673,13 +1921,15 @@ function toggleSelectMode() {
 }
 
 function clearSelected() {
-  state.selectedSelector = '';
+  state.selections       = [];
   selectorInput.value    = '';
   selectedHighlights.innerHTML  = '';
   hoverHighlight.style.display  = 'none';
   emptyState.style.display      = 'flex';
   animConfig.style.display      = 'none';
-  setStatus('Ready — select an element to begin');
+  const badge = document.getElementById('selection-count');
+  if (badge) badge.style.display = 'none';
+  setStatus('Ready — click to select · shift+click to multi-select');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1816,7 +2066,80 @@ function toggleScrollTrigger() {
 function toggleScrub() {
   state.scrubOn = !state.scrubOn;
   document.getElementById('scrub-toggle').classList.toggle('on', state.scrubOn);
+  document.getElementById('scrub-num-wrap').style.display = state.scrubOn ? 'flex' : 'none';
   syncFromFields();
+}
+
+// ST flag pills (pin / markers / once)
+function toggleSTFlag(id) {
+  const map = { 'st-pin': 'stPin', 'st-markers': 'stMarkers', 'st-once': 'stOnce' };
+  const key = map[id]; if (!key) return;
+  state[key] = !state[key];
+  document.getElementById(id).classList.toggle('active', state[key]);
+  syncFromFields();
+}
+
+// toggleActions preset chips
+function applyTAPreset(value, chipEl) {
+  document.querySelectorAll('.st-ta-chip').forEach(c => c.classList.remove('active'));
+  chipEl.classList.add('active');
+  const customWrap = document.getElementById('st-ta-custom');
+  if (value === 'custom') {
+    state.stCustomTA = true;
+    customWrap.style.display = 'block';
+    buildCustomTA();
+  } else {
+    state.stCustomTA = false;
+    state.stToggleActions = value;
+    customWrap.style.display = 'none';
+    syncFromFields();
+  }
+}
+
+// Build toggleActions string from the 4 custom selects
+function buildCustomTA() {
+  const enter     = document.getElementById('ta-enter').value;
+  const leave     = document.getElementById('ta-leave').value;
+  const enterBack = document.getElementById('ta-enter-back').value;
+  const leaveBack = document.getElementById('ta-leave-back').value;
+  state.stToggleActions = `${enter} ${leave} ${enterBack} ${leaveBack}`;
+  document.getElementById('st-toggle-actions').value = state.stToggleActions;
+  syncFromFields();
+}
+
+// Activate the correct preset chip for a given toggleActions string
+function syncTAChips(value) {
+  const chips = document.querySelectorAll('.st-ta-chip');
+  let matched = false;
+  chips.forEach(c => {
+    c.classList.remove('active');
+    if (c.dataset.preset === value) { c.classList.add('active'); matched = true; }
+  });
+  // Stamp data-preset onto chips if not already done
+  if (!chips[0].dataset.preset) {
+    const presets = ['play none none none','play none none reverse','restart none none none','play none none reset','play pause resume reverse','custom'];
+    chips.forEach((c,i) => c.dataset.preset = presets[i]);
+  }
+  // Re-check after stamping
+  let found = false;
+  chips.forEach(c => {
+    c.classList.remove('active');
+    if (c.dataset.preset === value) { c.classList.add('active'); found = true; }
+  });
+  if (!found) {
+    // mark custom chip active and populate selects
+    document.getElementById('st-ta-custom-chip').classList.add('active');
+    document.getElementById('st-ta-custom').style.display = 'block';
+    const parts = value.split(' ');
+    if (parts.length === 4) {
+      const ids = ['ta-enter','ta-leave','ta-enter-back','ta-leave-back'];
+      ids.forEach((id,i) => { const el=document.getElementById(id); if(el) el.value=parts[i]; });
+    }
+    state.stCustomTA = true;
+  } else {
+    document.getElementById('st-ta-custom').style.display = state.stCustomTA ? 'block' : 'none';
+    state.stCustomTA = false;
+  }
 }
 function toggleTimeline() {
   state.timelineOn = !state.timelineOn;
@@ -1837,10 +2160,16 @@ function readFields() {
     opacity:       parseFloat(document.getElementById('opacity-input').value),
     rotation:      parseFloat(document.getElementById('rotation-input').value)|| 0,
     stagger:       parseFloat(document.getElementById('stagger-input').value) || 0,
-    scrollTrigger: state.scrollTriggerOn,
-    stStart:       document.getElementById('st-start').value,
-    stEnd:         document.getElementById('st-end').value,
-    scrub:         state.scrubOn,
+    scrollTrigger:     state.scrollTriggerOn,
+    stTrigger:         document.getElementById('st-trigger').value.trim(),
+    stStart:           document.getElementById('st-start').value,
+    stEnd:             document.getElementById('st-end').value,
+    scrub:             state.scrubOn,
+    scrubAmount:       parseFloat(document.getElementById('scrub-amount').value) || 1,
+    stToggleActions:   document.getElementById('st-toggle-actions').value || 'play none none none',
+    stPin:             state.stPin,
+    stMarkers:         state.stMarkers,
+    stOnce:            state.stOnce,
     inTimeline:    state.timelineOn,
   };
 }
@@ -1855,13 +2184,29 @@ function populateFields(p) {
   const e=document.getElementById('ease-input');
   for(const o of e.options) if(o.value===p.ease){e.value=p.ease;break;}
   document.getElementById('gsap-method').value = p.method||'from';
-  state.scrollTriggerOn=!!p.scrollTrigger; state.scrubOn=!!p.scrub; state.timelineOn=!!p.inTimeline;
-  document.getElementById('scroll-toggle').classList.toggle('on',state.scrollTriggerOn);
-  document.getElementById('st-panel').style.display=state.scrollTriggerOn?'block':'none';
-  document.getElementById('scrub-toggle').classList.toggle('on',state.scrubOn);
-  document.getElementById('timeline-toggle').classList.toggle('on',state.timelineOn);
-  if(p.stStart) setF('st-start',p.stStart);
-  if(p.stEnd)   setF('st-end',p.stEnd);
+  state.scrollTriggerOn  = !!p.scrollTrigger;
+  state.scrubOn          = !!p.scrub;
+  state.scrubAmount      = p.scrubAmount ?? 1;
+  state.stPin            = !!p.stPin;
+  state.stMarkers        = !!p.stMarkers;
+  state.stOnce           = !!p.stOnce;
+  state.stToggleActions  = p.stToggleActions || 'play none none none';
+  state.timelineOn       = !!p.inTimeline;
+
+  document.getElementById('scroll-toggle').classList.toggle('on', state.scrollTriggerOn);
+  document.getElementById('st-panel').style.display = state.scrollTriggerOn ? 'block' : 'none';
+  document.getElementById('scrub-toggle').classList.toggle('on', state.scrubOn);
+  document.getElementById('scrub-num-wrap').style.display = state.scrubOn ? 'flex' : 'none';
+  document.getElementById('scrub-amount').value = state.scrubAmount;
+  document.getElementById('timeline-toggle').classList.toggle('on', state.timelineOn);
+  document.getElementById('st-pin').classList.toggle('active', state.stPin);
+  document.getElementById('st-markers').classList.toggle('active', state.stMarkers);
+  document.getElementById('st-once').classList.toggle('active', state.stOnce);
+  document.getElementById('st-toggle-actions').value = state.stToggleActions;
+  if (p.stStart)   setF('st-start',   p.stStart);
+  if (p.stEnd)     setF('st-end',     p.stEnd);
+  if (p.stTrigger) setF('st-trigger', p.stTrigger);
+  syncTAChips(state.stToggleActions);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1917,8 +2262,17 @@ function parseGSAPCode(code) {
       ease: obj.ease||'power3.out', duration: obj.duration??1, delay: obj.delay??0,
       x: obj.x??0, y: obj.y??0, scale: obj.scale??1, opacity: obj.opacity??(method==='to'?1:0),
       rotation: obj.rotation??0, stagger: obj.stagger??0,
-      scrollTrigger:!!st, stStart:st?.start||'top 80%', stEnd:st?.end||'bottom 20%',
-      scrub:!!st?.scrub, inTimeline };
+      scrollTrigger: !!st,
+      stTrigger:     st?.trigger !== selector ? (st?.trigger || '') : '',
+      stStart:       st?.start || 'top 80%',
+      stEnd:         st?.end   || 'bottom 20%',
+      scrub:         !!(st?.scrub !== undefined && st?.scrub !== false),
+      scrubAmount:   typeof st?.scrub === 'number' ? st.scrub : 1,
+      stToggleActions: st?.toggleActions || 'play none none none',
+      stPin:         !!st?.pin,
+      stMarkers:     !!st?.markers,
+      stOnce:        !!st?.once,
+      inTimeline };
   }
   let m;
   while ((m=callRe.exec(code))!==null) { try { results.push(objToAnim(m[1],m[2],extractObj(m[3]),false)); } catch(e){} }
@@ -2131,7 +2485,24 @@ function buildAnimObj(p) {
   if(p.opacity!==1)o.opacity=p.opacity; if(p.rotation!==0)o.rotation=p.rotation;
   o.duration=p.duration; if(p.delay>0)o.delay=p.delay; o.ease=p.ease;
   if(p.stagger>0)o.stagger=p.stagger;
-  if(p.scrollTrigger){const st={trigger:p.selector,start:p.stStart,end:p.stEnd};if(p.scrub)st.scrub=true;o.scrollTrigger=st;}
+  if (p.scrollTrigger) {
+    const trigger = p.stTrigger || p.selector;
+    const st = { trigger };
+    if (p.stStart)  st.start = p.stStart;
+    if (p.stEnd)    st.end   = p.stEnd;
+    // scrub: true (locked) or number (smoothing)
+    if (p.scrub) st.scrub = (p.scrubAmount && p.scrubAmount > 0) ? p.scrubAmount : true;
+    // toggleActions — omit if scrub is on (they conflict) or if it's the default
+    if (!p.scrub && p.stToggleActions && p.stToggleActions !== 'play none none none') {
+      st.toggleActions = p.stToggleActions;
+    } else if (!p.scrub) {
+      st.toggleActions = p.stToggleActions;
+    }
+    if (p.stPin)     st.pin     = true;
+    if (p.stMarkers) st.markers = true;
+    if (p.stOnce)    st.once    = true;
+    o.scrollTrigger = st;
+  }
   return o;
 }
 function objToCode(obj,ind='  '){
@@ -2249,6 +2620,22 @@ updateCDN();
 renderAnimationsList();
 updateUndoButtons();
 updatePageCount();
+
+// Stamp data-preset on toggleActions chips so syncTAChips works immediately
+(function stampTAPresets() {
+  const presets = [
+    'play none none none',
+    'play none none reverse',
+    'restart none none none',
+    'play none none reset',
+    'play pause resume reverse',
+    'custom',
+  ];
+  document.querySelectorAll('.st-ta-chip').forEach((c, i) => {
+    c.dataset.preset = presets[i] || 'custom';
+  });
+  syncTAChips('play none none none');
+})();
 
 </script>
 </body>

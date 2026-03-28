@@ -140,10 +140,14 @@
             <button class="btn btn-sm" onclick="cancelEdit()">Cancel</button>
           </div>
 
-          <div class="section-header">Target Selector</div>
+          <div class="section-header" style="display:flex;align-items:center;justify-content:space-between">
+            Target Selector
+            <span style="color:var(--text4);font-weight:400;letter-spacing:0;text-transform:none;font-size:9px">shift+click to multi-select</span>
+          </div>
           <div class="selector-display">
             <span style="color:var(--text3)">⌖</span>
             <input class="selector-input" id="selector-input" type="text" placeholder="click element…"/>
+            <span class="selection-count" id="selection-count" style="display:none">1</span>
           </div>
 
           <div class="section-header">Type</div>
@@ -221,15 +225,99 @@
             <div class="toggle" id="scroll-toggle" onclick="toggleScrollTrigger()"></div>
           </div>
           <div class="st-panel" id="st-panel" style="display:none">
-            <div class="st-title">ScrollTrigger options</div>
+            <div class="st-title">ScrollTrigger</div>
+
+            <!-- Trigger element -->
+            <div class="field" style="margin-bottom:6px">
+              <div class="field-label">Trigger element <span class="field-label-hint">(defaults to selector)</span></div>
+              <input class="field-input" type="text" id="st-trigger" placeholder="leave blank = same as selector" oninput="syncFromFields()">
+            </div>
+
+            <!-- Start / End -->
             <div class="field-row">
               <div class="field"><div class="field-label">Start</div><input class="field-input" type="text" id="st-start" value="top 80%" oninput="syncFromFields()"></div>
               <div class="field"><div class="field-label">End</div><input class="field-input" type="text" id="st-end" value="bottom 20%" oninput="syncFromFields()"></div>
             </div>
-            <div class="toggle-row" style="margin-bottom:0">
-              <span class="toggle-label">Scrub</span>
-              <div class="toggle" id="scrub-toggle" onclick="toggleScrub()"></div>
+
+            <!-- Scrub row: toggle + smoothing number -->
+            <div class="st-scrub-row">
+              <div class="toggle-row" style="margin-bottom:0;flex:1">
+                <span class="toggle-label">Scrub</span>
+                <div class="toggle" id="scrub-toggle" onclick="toggleScrub()"></div>
+              </div>
+              <div class="st-scrub-num" id="scrub-num-wrap" style="display:none">
+                <input class="field-input" type="number" id="scrub-amount" value="1" min="0" step="0.5"
+                       title="Smoothing (seconds). 0 = linked to scroll, 1+ = lag"
+                       style="width:60px;text-align:center" oninput="syncFromFields()">
+                <span class="field-label" style="white-space:nowrap">s lag</span>
+              </div>
             </div>
+
+            <!-- toggleActions -->
+            <div class="st-section-label">toggleActions</div>
+            <div class="st-ta-presets" id="st-ta-presets">
+              <div class="st-ta-chip active" onclick="applyTAPreset('play none none none',this)">play once</div>
+              <div class="st-ta-chip" onclick="applyTAPreset('play none none reverse',this)">↩ reverse</div>
+              <div class="st-ta-chip" onclick="applyTAPreset('restart none none none',this)">restart</div>
+              <div class="st-ta-chip" onclick="applyTAPreset('play none none reset',this)">reset</div>
+              <div class="st-ta-chip" onclick="applyTAPreset('play pause resume reverse',this)">toggle</div>
+              <div class="st-ta-chip" id="st-ta-custom-chip" onclick="applyTAPreset('custom',this)">custom…</div>
+            </div>
+            <!-- custom selects — shown only when custom preset active -->
+            <div class="st-ta-custom" id="st-ta-custom" style="display:none">
+              <div class="field-row" style="margin-bottom:4px">
+                <div class="field"><div class="field-label">onEnter</div>
+                  <select class="field-input" id="ta-enter" onchange="buildCustomTA()">
+                    <option value="play">play</option><option value="pause">pause</option>
+                    <option value="resume">resume</option><option value="reverse">reverse</option>
+                    <option value="restart">restart</option><option value="reset">reset</option>
+                    <option value="complete">complete</option><option value="none">none</option>
+                  </select>
+                </div>
+                <div class="field"><div class="field-label">onLeave</div>
+                  <select class="field-input" id="ta-leave" onchange="buildCustomTA()">
+                    <option value="none">none</option><option value="pause">pause</option>
+                    <option value="play">play</option><option value="resume">resume</option>
+                    <option value="reverse">reverse</option><option value="restart">restart</option>
+                    <option value="reset">reset</option><option value="complete">complete</option>
+                  </select>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field"><div class="field-label">onEnterBack</div>
+                  <select class="field-input" id="ta-enter-back" onchange="buildCustomTA()">
+                    <option value="none">none</option><option value="resume">resume</option>
+                    <option value="play">play</option><option value="pause">pause</option>
+                    <option value="reverse">reverse</option><option value="restart">restart</option>
+                    <option value="reset">reset</option><option value="complete">complete</option>
+                  </select>
+                </div>
+                <div class="field"><div class="field-label">onLeaveBack</div>
+                  <select class="field-input" id="ta-leave-back" onchange="buildCustomTA()">
+                    <option value="none">none</option><option value="reverse">reverse</option>
+                    <option value="play">play</option><option value="pause">pause</option>
+                    <option value="resume">resume</option><option value="restart">restart</option>
+                    <option value="reset">reset</option><option value="complete">complete</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+            <!-- hidden input storing the composed toggleActions string -->
+            <input type="hidden" id="st-toggle-actions" value="play none none none">
+
+            <!-- Pin / Markers / Once -->
+            <div class="st-flags-row">
+              <div class="st-flag" onclick="toggleSTFlag('st-pin')" id="st-pin">
+                <span class="st-flag-icon">📌</span> pin
+              </div>
+              <div class="st-flag" onclick="toggleSTFlag('st-markers')" id="st-markers">
+                <span class="st-flag-icon">⬚</span> markers
+              </div>
+              <div class="st-flag" onclick="toggleSTFlag('st-once')" id="st-once">
+                <span class="st-flag-icon">①</span> once
+              </div>
+            </div>
+
           </div>
           <div class="toggle-row">
             <span class="toggle-label">Add to timeline (tl)</span>
