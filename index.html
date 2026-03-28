@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GSAP Animation Studio</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ══ TOP BAR ════════════════════════════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    GSAP Studio
+  </div>
+
+  <!-- Import bar -->
+  <div class="import-bar">
+    <button class="btn btn-sm" onclick="openImportModal()" title="Import HTML file or URL">
+      ＋ Import page
+    </button>
+    <!-- page tabs rendered here by JS -->
+    <div class="page-tabs" id="page-tabs"></div>
+  </div>
+
+  <div class="topbar-right">
+    <div class="undo-group">
+      <button class="btn btn-sm" id="btn-undo" onclick="undo()" disabled title="Undo ⌘Z">↩</button>
+      <button class="btn btn-sm" id="btn-redo" onclick="redo()" disabled title="Redo ⌘⇧Z">↪</button>
+    </div>
+    <span class="mode-badge" id="mode-badge">PREVIEW</span>
+    <button class="btn" id="toggle-select-btn" onclick="toggleSelectMode()">⊹ Select</button>
+    <button class="btn" onclick="previewAll()">▶ Preview</button>
+    <button class="btn" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-primary" onclick="showTab('code')">Export JS</button>
+  </div>
+</div>
+
+
+<!-- ══ MAIN ROW ═══════════════════════════════════════════════════════════════ -->
+<div class="main-row">
+
+  <!-- ── CANVAS COLUMN ──────────────────────────────────────────────────────── -->
+  <div class="canvas-col">
+
+    <!-- The sandbox: shows either the iframe or the welcome screen -->
+    <div class="demo-site" id="demo-site">
+
+      <!-- Welcome / empty state -->
+      <div class="welcome-screen" id="welcome-screen">
+        <div class="welcome-icon">⊹</div>
+        <div class="welcome-title">No page loaded</div>
+        <div class="welcome-desc">Import an HTML file or fetch a URL to start animating real elements.</div>
+        <div class="welcome-actions">
+          <button class="btn btn-primary" onclick="openImportModal()">＋ Import page</button>
+          <button class="btn" onclick="loadDemoPage()">Load demo page</button>
+        </div>
+        <div class="welcome-hint">Or drag &amp; drop an HTML file anywhere</div>
+      </div>
+
+      <iframe id="page-frame" class="page-frame" style="display:none"
+              title="Page sandbox"></iframe>
+
+      <!-- Overlay: hover + selected highlights live here, on top of iframe -->
+      <div class="overlay-layer" id="overlay-layer" style="display:none">
+        <div class="hover-highlight" id="hover-highlight">
+          <div class="hover-label" id="hover-label"></div>
+        </div>
+        <div id="selected-highlights"></div>
+      </div>
+
+      <!-- Instruction nudge -->
+      <div class="instruction-overlay" id="instruction-overlay" style="display:none">
+        <div class="instruction-title">Click any element to animate it</div>
+        <div class="instruction-desc">Enable ⊹ Select mode · hover to highlight · click to capture</div>
+      </div>
+
+      <!-- Loading spinner -->
+      <div class="loading-overlay" id="loading-overlay" style="display:none">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">Loading…</div>
+      </div>
+
+      <!-- Collapse tab -->
+      <div class="collapse-tab" id="collapse-tab" onclick="togglePanel()" title="Toggle panel ⌘[">›</div>
+    </div>
+
+    <!-- ── TIMELINE ── -->
+    <div class="timeline-section" id="timeline-section">
+      <div class="timeline-resize-handle" id="timeline-resize-handle"></div>
+      <div class="timeline-toolbar">
+        <span class="timeline-toolbar-label">Timeline</span>
+        <div style="flex:1"></div>
+        <button class="btn btn-sm" onclick="previewAll()">▶ Play</button>
+        <button class="btn btn-sm" onclick="resetAll()">↺</button>
+      </div>
+      <div class="timeline-body" id="timeline-body">
+        <div class="tl-empty">No animations yet — import a page and select elements</div>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span id="status-text">Ready — import a page to begin</span>
+      <span>·</span>
+      <span id="anim-count">0 animations</span>
+      <span>·</span>
+      <span id="page-count">0 pages</span>
+      <span>·</span>
+      <span>GSAP 3.12</span>
+    </div>
+
+  </div><!-- /canvas-col -->
+
+  <div class="resize-handle" id="resize-handle"></div>
+
+  <!-- ── RIGHT PANEL ─────────────────────────────────────────────────────────── -->
+  <div class="right-panel" id="right-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="showTab('animate')" id="tab-animate">Animate</button>
+      <button class="panel-tab"        onclick="showTab('layers')"  id="tab-layers">Layers</button>
+      <button class="panel-tab"        onclick="showTab('code')"    id="tab-code">Code</button>
+    </div>
+
+    <!-- ANIMATE -->
+    <div class="tab-content active" id="tab-animate-content">
+      <div class="panel-body">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">⊹</div>
+          <div class="empty-title">No element selected</div>
+          <div class="empty-desc">Import a page, enable Select mode, then click any element.</div>
+        </div>
+        <div id="anim-config" style="display:none">
+          <div class="edit-indicator" id="edit-indicator" style="display:none">
+            <div class="edit-indicator-dot"></div>
+            <span id="edit-indicator-text">Editing…</span>
+            <div style="flex:1"></div>
+            <button class="btn btn-sm" onclick="cancelEdit()">Cancel</button>
+          </div>
+
+          <div class="section-header">Target Selector</div>
+          <div class="selector-display">
+            <span style="color:var(--text3)">⌖</span>
+            <input class="selector-input" id="selector-input" type="text" placeholder="click element…"/>
+          </div>
+
+          <div class="section-header">Type</div>
+          <div class="anim-type-grid">
+            <button class="anim-type-btn active" onclick="setAnimType('fade')"   id="type-fade"><span class="anim-icon">◌</span>Fade</button>
+            <button class="anim-type-btn"        onclick="setAnimType('slide')"  id="type-slide"><span class="anim-icon">→</span>Slide</button>
+            <button class="anim-type-btn"        onclick="setAnimType('scale')"  id="type-scale"><span class="anim-icon">⊞</span>Scale</button>
+            <button class="anim-type-btn"        onclick="setAnimType('rotate')" id="type-rotate"><span class="anim-icon">↻</span>Rotate</button>
+          </div>
+
+          <div class="section-header">Presets</div>
+          <div class="preset-row">
+            <div class="preset-chip" onclick="applyPreset('hero-in')">hero-in</div>
+            <div class="preset-chip" onclick="applyPreset('fade-up')">fade-up</div>
+            <div class="preset-chip" onclick="applyPreset('bounce-in')">bounce</div>
+            <div class="preset-chip" onclick="applyPreset('slide-left')">slide-left</div>
+            <div class="preset-chip" onclick="applyPreset('zoom-in')">zoom-in</div>
+            <div class="preset-chip" onclick="applyPreset('flip')">flip</div>
+          </div>
+
+          <div class="section-header">Method &amp; Ease</div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Method</div>
+              <select class="field-input" id="gsap-method" onchange="syncFromFields()">
+                <option value="from">gsap.from()</option>
+                <option value="to">gsap.to()</option>
+                <option value="fromTo">gsap.fromTo()</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="field-label">Ease</div>
+              <select class="field-input" id="ease-input" onchange="syncFromFields()">
+                <option value="power3.out">power3.out</option>
+                <option value="power1.out">power1.out</option>
+                <option value="power2.inOut">power2.inOut</option>
+                <option value="bounce.out">bounce.out</option>
+                <option value="elastic.out(1,0.3)">elastic.out</option>
+                <option value="back.out(1.7)">back.out</option>
+                <option value="none">none (linear)</option>
+                <option value="circ.out">circ.out</option>
+                <option value="expo.out">expo.out</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-header">Timing</div>
+          <div class="range-row">
+            <div class="range-header"><span class="field-label">Duration</span><span class="range-val" id="duration-val">1.0s</span></div>
+            <input type="range" min="0.1" max="3" step="0.1" value="1" id="duration-slider" oninput="updateRange(this,'duration-val','s');syncFromFields()">
+          </div>
+          <div class="range-row">
+            <div class="range-header"><span class="field-label">Delay</span><span class="range-val" id="delay-val">0.0s</span></div>
+            <input type="range" min="0" max="2" step="0.1" value="0" id="delay-slider" oninput="updateRange(this,'delay-val','s');syncFromFields()">
+          </div>
+
+          <div class="divider"></div>
+          <div class="section-header">Transform</div>
+          <div class="field-row">
+            <div class="field"><div class="field-label">X (px)</div><input class="field-input" type="number" id="x-input" value="0" oninput="syncFromFields()"></div>
+            <div class="field"><div class="field-label">Y (px)</div><input class="field-input" type="number" id="y-input" value="60" oninput="syncFromFields()"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><div class="field-label">Scale</div><input class="field-input" type="number" id="scale-input" value="1" step="0.1" oninput="syncFromFields()"></div>
+            <div class="field"><div class="field-label">Opacity</div><input class="field-input" type="number" id="opacity-input" value="0" step="0.1" min="0" max="1" oninput="syncFromFields()"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><div class="field-label">Rotation °</div><input class="field-input" type="number" id="rotation-input" value="0" oninput="syncFromFields()"></div>
+            <div class="field"><div class="field-label">Stagger (s)</div><input class="field-input" type="number" id="stagger-input" value="0" step="0.05" oninput="syncFromFields()"></div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="toggle-row">
+            <span class="toggle-label">ScrollTrigger</span>
+            <div class="toggle" id="scroll-toggle" onclick="toggleScrollTrigger()"></div>
+          </div>
+          <div class="st-panel" id="st-panel" style="display:none">
+            <div class="st-title">ScrollTrigger options</div>
+            <div class="field-row">
+              <div class="field"><div class="field-label">Start</div><input class="field-input" type="text" id="st-start" value="top 80%" oninput="syncFromFields()"></div>
+              <div class="field"><div class="field-label">End</div><input class="field-input" type="text" id="st-end" value="bottom 20%" oninput="syncFromFields()"></div>
+            </div>
+            <div class="toggle-row" style="margin-bottom:0">
+              <span class="toggle-label">Scrub</span>
+              <div class="toggle" id="scrub-toggle" onclick="toggleScrub()"></div>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Add to timeline (tl)</span>
+            <div class="toggle" id="timeline-toggle" onclick="toggleTimeline()"></div>
+          </div>
+          <button class="add-anim-btn" id="add-anim-btn" onclick="commitAnimation()">+ Add to stack</button>
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn" onclick="clearSelected()">Clear</button>
+        <button class="btn" id="commit-btn" onclick="commitAnimation()">Add Animation</button>
+      </div>
+    </div>
+
+    <!-- LAYERS -->
+    <div class="tab-content" id="tab-layers-content">
+      <div class="panel-body">
+        <div class="section-header">Animation Stack</div>
+        <div id="animations-list"></div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn" onclick="clearAllAnimations()">Clear All</button>
+        <button class="btn" onclick="previewAll()">▶ Preview All</button>
+      </div>
+    </div>
+
+    <!-- CODE -->
+    <div class="tab-content" id="tab-code-content">
+      <div class="panel-body">
+        <div class="section-header">GSAP Code — live editable</div>
+        <div class="code-editor-wrap">
+          <div class="code-toolbar">
+            <span class="code-lang">JavaScript</span>
+            <span class="code-dirty-badge" id="dirty-badge">parsing…</span>
+            <button class="btn btn-sm" onclick="copyCode()">copy</button>
+          </div>
+          <textarea class="code-editor" id="code-editor" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
+          <div class="parse-error" id="parse-error"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="section-header">CDN Script Tags</div>
+        <div class="code-block">
+          <div class="code-toolbar">
+            <span class="code-lang">HTML</span>
+            <button class="btn btn-sm" onclick="copyCDN()">copy</button>
+          </div>
+          <div class="code-content" id="cdn-output"></div>
+        </div>
+        <div class="divider"></div>
+        <p class="hint">Edit JS directly — changes sync back in 500ms. Paste into a &lt;script&gt; tag in your project.</p>
+      </div>
+      <div class="panel-footer">
+        <button class="btn" onclick="copyCode()">Copy JS</button>
+        <button class="btn btn-primary" onclick="downloadCode()">Download .js</button>
+      </div>
+    </div>
+
+  </div><!-- /right-panel -->
+</div><!-- /main-row -->
+
+
+<!-- ══ IMPORT MODAL ════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-backdrop" style="display:none" onclick="closeImportModal()"></div>
+<div class="modal" id="import-modal" style="display:none">
+  <div class="modal-header">
+    <span class="modal-title">Import Page</span>
+    <button class="btn btn-sm" onclick="closeImportModal()">✕</button>
+  </div>
+
+  <div class="modal-tabs">
+    <button class="modal-tab active" id="mtab-url"  onclick="switchModalTab('url')">URL Fetch</button>
+    <button class="modal-tab"        id="mtab-file" onclick="switchModalTab('file')">HTML File</button>
+  </div>
+
+  <!-- URL tab -->
+  <div class="modal-body" id="mtab-url-body">
+    <div class="modal-field-label">Page URL</div>
+    <div class="modal-url-row">
+      <input class="modal-input" id="url-input" type="url"
+             placeholder="https://example.com"
+             onkeydown="if(e.key==='Enter')fetchUrl()"/>
+      <button class="btn btn-primary" onclick="fetchUrl()">Fetch</button>
+    </div>
+    <div class="modal-note" id="url-note">
+      ⚠ Most production sites block cross-origin fetches (CORS). Works best with your own sites, local dev servers, or sites that allow it. If it fails, use the HTML File tab instead.
+    </div>
+    <div class="modal-error" id="url-error" style="display:none"></div>
+  </div>
+
+  <!-- File tab -->
+  <div class="modal-body" id="mtab-file-body" style="display:none">
+    <div class="drop-zone" id="drop-zone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleFileDrop(event)">
+      <div class="drop-icon">⎙</div>
+      <div class="drop-title">Drop HTML file here</div>
+      <div class="drop-sub">or click to browse</div>
+    </div>
+    <input type="file" id="file-input" accept=".html,.htm" style="display:none" onchange="handleFileInput(event)">
+    <div class="modal-note">
+      Relative asset paths (images, fonts, CSS) work best when all files are in the same folder or use absolute URLs.
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <div class="modal-page-label">Page name (optional)</div>
+    <input class="modal-input" id="page-name-input" type="text" placeholder="Home, About, etc."/>
+  </div>
+</div>
+
+
+<!-- ══ TOAST ══════════════════════════════════════════════════════════════════ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ GLOBAL DRAG-DROP (file onto app) ═══════════════════════════════════════ -->
+<script>
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && (file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
+    loadHtmlFile(file);
+  }
+});
+</script>
+
+<script src="studio.js"></script>
+</body>
+</html>

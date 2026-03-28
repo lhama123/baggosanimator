@@ -1,0 +1,2243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GSAP Animation Studio</title>
+  <style>
+/* ═══════════════════════════════════════════════════════════
+   GSAP ANIMATION STUDIO — styles.css  v4
+   + Page import · iframe sandbox · multi-page tabs
+═══════════════════════════════════════════════════════════ */
+
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg:        #111;
+  --surface:   #1a1a1a;
+  --surface2:  #222;
+  --surface3:  #2a2a2a;
+  --surface4:  #333;
+  --border:    #2e2e2e;
+  --border2:   #3d3d3d;
+  --border3:   #505050;
+  --text:      #e6e6e6;
+  --text2:     #999;
+  --text3:     #555;
+  --text4:     #3a3a3a;
+  --accent-bg: rgba(255,255,255,.06);
+  --accent-bd: rgba(255,255,255,.16);
+  --mono: 'JetBrains Mono', monospace;
+  --sans: 'Inter', sans-serif;
+  --r: 6px;
+}
+
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+
+body {
+  background:var(--bg); color:var(--text);
+  font-family:var(--sans); height:100vh; overflow:hidden;
+  display:flex; flex-direction:column;
+}
+
+/* ── TOP BAR ──────────────────────────────────────────────────────────────── */
+
+.topbar {
+  flex-shrink:0; height:44px;
+  background:var(--surface); border-bottom:1px solid var(--border);
+  display:flex; align-items:center; padding:0 10px; gap:8px; z-index:200;
+}
+
+.logo {
+  font-family:var(--mono); font-weight:600; font-size:13px; letter-spacing:.3px;
+  color:var(--text); display:flex; align-items:center; gap:8px;
+  padding-right:12px; border-right:1px solid var(--border); white-space:nowrap; flex-shrink:0;
+}
+.logo-dot { width:6px;height:6px;background:var(--text);border-radius:50%;animation:blink 3s ease infinite; }
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* import bar — takes most of the topbar */
+.import-bar {
+  flex:1; display:flex; align-items:center; gap:6px; overflow:hidden; min-width:0;
+}
+
+.page-tabs {
+  display:flex; gap:3px; align-items:center;
+  overflow-x:auto; overflow-y:hidden;
+  scrollbar-width:none; flex:1;
+}
+.page-tabs::-webkit-scrollbar { display:none; }
+
+.page-tab {
+  display:flex; align-items:center; gap:5px;
+  height:26px; padding:0 10px;
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:var(--r); font-size:11px; color:var(--text3);
+  cursor:pointer; transition:all .12s; white-space:nowrap; flex-shrink:0;
+  font-family:var(--mono); user-select:none;
+}
+.page-tab:hover { color:var(--text2); border-color:var(--border2); }
+.page-tab.active {
+  background:var(--surface3); border-color:var(--border3); color:var(--text);
+}
+.page-tab-close {
+  width:14px; height:14px; border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; color:var(--text3); transition:all .1s;
+}
+.page-tab-close:hover { background:var(--surface4); color:var(--text); }
+
+.page-tab-favicon {
+  width:12px; height:12px; border-radius:2px;
+  background:var(--surface3); flex-shrink:0; font-size:10px;
+  display:flex; align-items:center; justify-content:center;
+}
+
+.topbar-right { display:flex; align-items:center; gap:5px; flex-shrink:0; }
+.undo-group   { display:flex; gap:2px; margin-right:3px; }
+
+.mode-badge {
+  padding:2px 8px; border-radius:3px; font-size:10px; font-weight:600;
+  font-family:var(--mono); letter-spacing:.8px; text-transform:uppercase;
+  border:1px solid var(--border2); background:var(--surface2); color:var(--text3); transition:all .15s;
+}
+.mode-badge.active { background:var(--accent-bg); border-color:var(--accent-bd); color:var(--text); }
+
+/* ── BUTTONS ─────────────────────────────────────────────────────────────── */
+
+.btn {
+  height:28px; padding:0 11px; border-radius:var(--r);
+  border:1px solid var(--border); font-family:var(--sans); font-size:11px; font-weight:500;
+  cursor:pointer; transition:all .12s; display:flex; align-items:center; gap:5px;
+  background:transparent; color:var(--text2); white-space:nowrap; user-select:none;
+}
+.btn:hover    { background:var(--surface2); color:var(--text); border-color:var(--border2); }
+.btn:disabled { opacity:.35; cursor:default; pointer-events:none; }
+.btn.active   { background:var(--accent-bg); color:var(--text); border-color:var(--accent-bd); }
+.btn-sm       { height:24px; padding:0 9px; font-size:10px; }
+.btn-primary  { background:var(--text); color:#111; border-color:var(--text); font-weight:600; }
+.btn-primary:hover { background:#ccc; border-color:#ccc; color:#111; }
+
+/* ── MAIN ROW ────────────────────────────────────────────────────────────── */
+
+.main-row {
+  flex:1; display:flex; overflow:hidden; min-height:0;
+}
+.canvas-col {
+  flex:1; min-width:0; display:flex; flex-direction:column; overflow:hidden;
+}
+
+/* ── DEMO SITE / IFRAME ──────────────────────────────────────────────────── */
+
+.demo-site {
+  flex:1; position:relative; overflow:hidden; min-height:0;
+  background:#181818;
+  background-image:
+    linear-gradient(rgba(255,255,255,.017) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.017) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+
+.page-frame {
+  width:100%; height:100%;
+  border:none; background:#fff; display:block;
+}
+
+/* Overlay sits on top of iframe — MUST be fully pointer-events:none
+   so all mouse events pass through to the iframe beneath */
+.overlay-layer {
+  position:absolute; inset:0;
+  pointer-events: none;   /* layer itself never intercepts */
+  z-index:100;
+}
+
+.hover-highlight {
+  position:absolute; border:1px solid rgba(255,255,255,.5);
+  background:rgba(255,255,255,.04); border-radius:3px;
+  pointer-events: none;   /* highlight never intercepts */
+  display:none;
+}
+.hover-label {
+  position:absolute; background:#222; color:var(--text2);
+  font-family:var(--mono); font-size:10px; padding:2px 7px;
+  border-radius:3px; white-space:nowrap; top:-22px; left:0;
+  border:1px solid var(--border2);
+  pointer-events: none;
+}
+.selected-highlight {
+  position:absolute; border:1px solid rgba(255,255,255,.7);
+  background:rgba(255,255,255,.05); border-radius:3px;
+  pointer-events: none;   /* never intercept */
+}
+.selected-label {
+  position:absolute; background:var(--text); color:#111;
+  font-family:var(--mono); font-size:10px; font-weight:600;
+  padding:2px 7px; border-radius:3px; white-space:nowrap; bottom:-22px; left:0;
+  pointer-events: none;
+}
+
+/* ── WELCOME SCREEN ──────────────────────────────────────────────────────── */
+
+.welcome-screen {
+  position:absolute; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:14px; text-align:center; padding:40px;
+}
+.welcome-icon  { font-size:36px; opacity:.15; }
+.welcome-title { font-size:18px; font-weight:600; color:var(--text2); }
+.welcome-desc  { font-size:13px; color:var(--text3); max-width:300px; line-height:1.6; font-family:var(--mono); }
+.welcome-actions { display:flex; gap:8px; margin-top:4px; }
+.welcome-hint  { font-size:11px; color:var(--text4); font-family:var(--mono); }
+
+/* ── INSTRUCTION OVERLAY ─────────────────────────────────────────────────── */
+
+.instruction-overlay {
+  position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  background:rgba(17,17,17,.9); border:1px solid var(--border2);
+  border-radius:8px; padding:16px 22px; text-align:center;
+  z-index:150; backdrop-filter:blur(8px); pointer-events:none;
+}
+.instruction-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:4px; }
+.instruction-desc  { font-size:11px; color:var(--text3); line-height:1.5; font-family:var(--mono); }
+
+/* ── LOADING ─────────────────────────────────────────────────────────────── */
+
+.loading-overlay {
+  position:absolute; inset:0; background:rgba(17,17,17,.8);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px;
+  z-index:200;
+}
+.spinner {
+  width:28px; height:28px; border:2px solid var(--border2);
+  border-top-color:var(--text3); border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin { to{transform:rotate(360deg)} }
+.loading-text { font-size:12px; color:var(--text3); font-family:var(--mono); }
+
+/* collapse tab */
+.collapse-tab {
+  position:absolute; right:0; top:50%; transform:translateY(-50%);
+  z-index:201; width:16px; height:40px;
+  background:var(--surface2); border:1px solid var(--border2);
+  border-right:none; border-radius:5px 0 0 5px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--text3); font-size:9px; transition:all .15s; user-select:none;
+}
+.collapse-tab:hover { background:var(--surface3); color:var(--text2); }
+
+/* ── TIMELINE ────────────────────────────────────────────────────────────── */
+
+.timeline-section {
+  flex-shrink:0; display:flex; flex-direction:column;
+  background:var(--surface); border-top:1px solid var(--border);
+  overflow:hidden; min-height:32px;
+}
+.timeline-resize-handle {
+  height:4px; flex-shrink:0; background:var(--border); cursor:row-resize;
+  position:relative; transition:background .15s;
+}
+.timeline-resize-handle:hover,.timeline-resize-handle.dragging { background:var(--border3); }
+.timeline-resize-handle::before { content:''; position:absolute; inset:-5px 0; }
+.timeline-resize-handle::after {
+  content:''; position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%); width:28px; height:1px;
+  background:var(--border3); border-radius:1px;
+}
+.timeline-toolbar {
+  height:30px; flex-shrink:0; display:flex; align-items:center;
+  padding:0 10px; gap:8px; border-bottom:1px solid var(--border);
+}
+.timeline-toolbar-label { font-size:9px; font-weight:600; color:var(--text3); letter-spacing:1.2px; text-transform:uppercase; font-family:var(--mono); }
+.timeline-body {
+  flex:1; overflow-y:auto; overflow-x:hidden; padding:5px 10px;
+  display:flex; flex-direction:column; gap:3px;
+  scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+}
+.timeline-body::-webkit-scrollbar { width:3px; }
+.timeline-body::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.tl-empty { font-size:10px; color:var(--text4); font-family:var(--mono); padding:8px 0; }
+
+.tl-row { display:flex; align-items:center; gap:8px; height:26px; flex-shrink:0; }
+.tl-row-label {
+  width:110px; flex-shrink:0; font-family:var(--mono); font-size:10px;
+  color:var(--text3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  cursor:pointer; padding:0 4px; border-radius:3px; transition:color .12s;
+}
+.tl-row-label:hover { color:var(--text2); }
+.tl-row-label.selected { color:var(--text); }
+.tl-track {
+  flex:1; height:20px; background:var(--surface2);
+  border-radius:3px; border:1px solid var(--border); position:relative; overflow:visible;
+}
+.tl-block {
+  position:absolute; top:2px; height:14px; border-radius:3px;
+  display:flex; align-items:center; padding:0 5px;
+  font-size:9px; font-family:var(--mono); white-space:nowrap;
+  cursor:pointer; overflow:hidden; transition:filter .12s; user-select:none;
+}
+.tl-block:hover { filter:brightness(1.4); }
+.tl-block.selected { outline:1px solid rgba(255,255,255,.5); outline-offset:1px; }
+.tl-cursor {
+  position:absolute; top:-2px; bottom:-2px; width:1px; background:#666; pointer-events:none; z-index:10;
+}
+.tl-cursor::before {
+  content:''; position:absolute; top:-3px; left:-3px;
+  width:7px; height:7px; background:#666; border-radius:50%;
+}
+
+/* ── STATUS ──────────────────────────────────────────────────────────────── */
+
+.status-bar {
+  height:22px; flex-shrink:0; background:var(--surface2); border-top:1px solid var(--border);
+  display:flex; align-items:center; padding:0 12px; gap:12px;
+  font-size:10px; color:var(--text3); font-family:var(--mono);
+}
+.status-dot { width:5px; height:5px; border-radius:50%; background:var(--text3); }
+
+/* ── PANEL RESIZE ────────────────────────────────────────────────────────── */
+
+.resize-handle {
+  width:5px; flex-shrink:0; background:var(--border); cursor:col-resize;
+  position:relative; transition:background .15s; z-index:10;
+}
+.resize-handle:hover,.resize-handle.dragging { background:var(--border3); }
+.resize-handle::before { content:''; position:absolute; inset:0 -6px; }
+.resize-handle::after {
+  content:''; position:absolute; top:50%; left:50%;
+  transform:translate(-50%,-50%); width:1px; height:24px;
+  background:var(--border3); border-radius:1px;
+}
+.right-panel {
+  width:300px; min-width:220px; max-width:540px; flex-shrink:0;
+  background:var(--surface); display:flex; flex-direction:column; overflow:hidden;
+}
+.right-panel.collapsed { width:0!important; min-width:0; overflow:hidden; }
+.resize-handle.hidden  { display:none; }
+
+/* ── PANEL INTERNALS ─────────────────────────────────────────────────────── */
+
+.panel-tabs {
+  display:flex; border-bottom:1px solid var(--border); background:var(--surface2); flex-shrink:0;
+}
+.panel-tab {
+  flex:1; height:34px; background:transparent; border:none;
+  color:var(--text3); font-family:var(--mono); font-size:10px; font-weight:500;
+  cursor:pointer; transition:all .12s; letter-spacing:.8px;
+  border-bottom:1px solid transparent; text-transform:uppercase; margin-bottom:-1px;
+}
+.panel-tab.active { color:var(--text); border-bottom-color:var(--text); background:var(--surface); }
+.panel-tab:hover:not(.active) { color:var(--text2); }
+
+.panel-body { flex:1; overflow-y:auto; padding:12px; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
+.panel-body::-webkit-scrollbar { width:3px; }
+.panel-body::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+.panel-footer { border-top:1px solid var(--border); padding:9px 12px; display:flex; gap:6px; background:var(--surface2); flex-shrink:0; }
+.panel-footer .btn { flex:1; justify-content:center; }
+
+/* ── FORM ────────────────────────────────────────────────────────────────── */
+
+.section-header {
+  font-size:9px; font-weight:600; letter-spacing:1.2px; text-transform:uppercase;
+  color:var(--text3); margin-bottom:7px; margin-top:16px; font-family:var(--mono);
+}
+.section-header:first-child { margin-top:0; }
+.selector-display {
+  background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
+  padding:7px 9px; font-family:var(--mono); font-size:11px; color:var(--text);
+  display:flex; align-items:center; gap:7px; min-height:32px; margin-bottom:8px;
+}
+.selector-input {
+  background:transparent; border:none; outline:none; color:var(--text);
+  font-family:var(--mono); font-size:11px; flex:1; caret-color:var(--text); min-width:0;
+}
+.selector-input::placeholder { color:var(--text3); font-style:italic; }
+.anim-type-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:5px; margin-bottom:8px; }
+.anim-type-btn {
+  background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
+  padding:8px 4px; color:var(--text3); font-family:var(--mono); font-size:9px; font-weight:500;
+  cursor:pointer; transition:all .12s; text-align:center;
+  display:flex; flex-direction:column; align-items:center; gap:3px;
+  letter-spacing:.3px; text-transform:uppercase;
+}
+.anim-type-btn .anim-icon { font-size:13px; }
+.anim-type-btn:hover { border-color:var(--border2); color:var(--text2); background:var(--surface3); }
+.anim-type-btn.active { background:var(--surface3); border-color:var(--border3); color:var(--text); }
+.preset-row { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px; }
+.preset-chip {
+  background:var(--surface2); border:1px solid var(--border); border-radius:3px;
+  padding:3px 8px; font-size:10px; color:var(--text3); cursor:pointer; font-weight:500;
+  transition:all .12s; font-family:var(--mono);
+}
+.preset-chip:hover { border-color:var(--border3); color:var(--text2); background:var(--surface3); }
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px; }
+.field { display:flex; flex-direction:column; gap:4px; }
+.field-label { font-size:9px; color:var(--text3); font-weight:600; letter-spacing:.8px; text-transform:uppercase; font-family:var(--mono); }
+.field-input {
+  background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
+  padding:6px 8px; color:var(--text); font-family:var(--mono); font-size:11px;
+  outline:none; transition:border-color .12s; width:100%; appearance:none; -webkit-appearance:none;
+}
+.field-input:focus { border-color:var(--border3); }
+.field-input:hover { border-color:var(--border2); }
+select.field-input {
+  cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23555'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 7px center; padding-right:22px;
+}
+select.field-input option { background:#222; }
+.range-row { margin-bottom:7px; }
+.range-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+.range-val {
+  font-family:var(--mono); font-size:10px; color:var(--text2);
+  background:var(--surface2); border:1px solid var(--border); border-radius:3px; padding:1px 6px;
+}
+input[type="range"] { width:100%; height:3px; -webkit-appearance:none; background:var(--surface3); border-radius:2px; outline:none; }
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
+  background:var(--text2); cursor:pointer; border:1px solid var(--border3);
+}
+input[type="range"]:hover::-webkit-slider-thumb { background:var(--text); }
+.toggle-row {
+  display:flex; align-items:center; justify-content:space-between; padding:7px 9px;
+  background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); margin-bottom:5px;
+}
+.toggle-label { font-size:11px; color:var(--text2); font-weight:500; font-family:var(--mono); }
+.toggle {
+  width:30px; height:16px; background:var(--surface3); border-radius:8px;
+  border:1px solid var(--border2); cursor:pointer; position:relative; transition:all .15s; flex-shrink:0;
+}
+.toggle.on { background:var(--surface4); border-color:var(--border3); }
+.toggle::after { content:''; position:absolute; width:10px; height:10px; background:var(--text3); border-radius:50%; top:2px; left:2px; transition:all .15s; }
+.toggle.on::after { left:16px; background:var(--text); }
+.st-panel { background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); padding:9px; margin-bottom:5px; }
+.st-title { font-size:9px; font-weight:600; color:var(--text3); margin-bottom:7px; letter-spacing:.8px; text-transform:uppercase; font-family:var(--mono); }
+.divider { height:1px; background:var(--border); margin:9px 0; }
+.add-anim-btn {
+  width:100%; padding:8px; background:transparent; border:1px dashed var(--border2);
+  border-radius:var(--r); color:var(--text3); font-family:var(--mono); font-size:10px; font-weight:500;
+  cursor:pointer; transition:all .12s; margin-bottom:5px;
+}
+.add-anim-btn:hover { border-color:var(--border3); color:var(--text2); background:var(--surface2); }
+.edit-indicator {
+  display:flex; align-items:center; gap:6px; padding:7px 9px; background:var(--surface3);
+  border:1px solid var(--border2); border-radius:var(--r); margin-bottom:8px;
+  font-size:10px; color:var(--text2); font-family:var(--mono);
+}
+.edit-indicator-dot { width:6px; height:6px; border-radius:50%; background:var(--text); flex-shrink:0; animation:blink 1.5s ease infinite; }
+
+/* ── LAYERS LIST ─────────────────────────────────────────────────────────── */
+
+.anim-item {
+  background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
+  padding:9px 10px; margin-bottom:5px; cursor:pointer; transition:all .12s;
+  position:relative; user-select:none;
+}
+.anim-item:hover { border-color:var(--border2); }
+.anim-item.selected { border-color:var(--border3); background:var(--surface3); }
+.anim-item.dragging-item { opacity:.4; }
+.anim-item.drag-over-item { border-color:var(--border3); border-style:dashed; }
+.anim-item-drag-handle {
+  position:absolute; left:0; top:0; bottom:0; width:18px;
+  display:flex; align-items:center; justify-content:center;
+  color:var(--text4); font-size:11px; cursor:grab; border-radius:var(--r) 0 0 var(--r);
+}
+.anim-item-drag-handle:active { cursor:grabbing; }
+.anim-item-content { padding-left:14px; }
+.anim-item-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:3px; }
+.anim-item-selector { font-family:var(--mono); font-size:11px; color:var(--text); font-weight:500; }
+.anim-item-type { font-size:9px; font-weight:600; background:var(--surface3); color:var(--text3); padding:2px 5px; border-radius:3px; font-family:var(--mono); border:1px solid var(--border); }
+.anim-item-desc { font-size:10px; color:var(--text3); font-family:var(--mono); }
+.anim-item-actions { display:flex; gap:4px; margin-top:6px; flex-wrap:wrap; }
+.icon-btn {
+  height:22px; padding:0 7px; background:var(--surface3); border:1px solid var(--border);
+  border-radius:3px; color:var(--text3); font-size:10px; cursor:pointer;
+  display:flex; align-items:center; gap:4px; transition:all .12s; font-family:var(--mono); white-space:nowrap;
+}
+.icon-btn:hover { background:var(--surface4); color:var(--text); border-color:var(--border3); }
+
+/* ── CODE EDITOR ─────────────────────────────────────────────────────────── */
+
+.code-editor-wrap { position:relative; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:8px; display:flex; flex-direction:column; }
+.code-toolbar { display:flex; align-items:center; justify-content:space-between; padding:6px 9px; border-bottom:1px solid var(--border); background:var(--surface3); flex-shrink:0; }
+.code-lang { font-size:9px; font-weight:600; color:var(--text3); letter-spacing:1px; text-transform:uppercase; font-family:var(--mono); }
+.code-dirty-badge { font-size:9px; color:var(--text3); font-family:var(--mono); padding:1px 6px; border-radius:3px; background:var(--surface2); border:1px solid var(--border); opacity:0; transition:opacity .2s; }
+.code-dirty-badge.visible { opacity:1; }
+.code-editor {
+  padding:11px; font-family:var(--mono); font-size:11px; line-height:1.85; color:var(--text2);
+  white-space:pre; overflow-x:auto; min-height:140px; max-height:300px; overflow-y:auto;
+  outline:none; resize:none; background:transparent; border:none; width:100%;
+  caret-color:var(--text); tab-size:2; -moz-tab-size:2;
+}
+.code-editor:focus { color:var(--text); }
+.code-editor::-webkit-scrollbar { height:3px; width:3px; }
+.code-editor::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.code-block { background:var(--surface2); border:1px solid var(--border); border-radius:var(--r); overflow:hidden; margin-bottom:8px; }
+.code-content { padding:11px; font-family:var(--mono); font-size:11px; line-height:1.85; color:var(--text2); white-space:pre; overflow-x:auto; }
+.code-content::-webkit-scrollbar { height:3px; }
+.code-content::-webkit-scrollbar-thumb { background:var(--border2); border-radius:2px; }
+.kw{color:#aaa}.fn{color:var(--text);font-weight:500}.str{color:#888}.num{color:#bbb}.cm{color:var(--text3);font-style:italic}.prop{color:#ccc}
+.parse-error { margin:6px 0 0; padding:6px 9px; background:rgba(255,80,80,.08); border:1px solid rgba(255,80,80,.2); border-radius:var(--r); font-size:10px; color:#e88; font-family:var(--mono); display:none; }
+.parse-error.visible { display:block; }
+
+/* ── MISC ────────────────────────────────────────────────────────────────── */
+
+.empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 16px; text-align:center; gap:9px; }
+.empty-icon  { font-size:24px; opacity:.2; }
+.empty-title { font-size:12px; font-weight:600; color:var(--text3); font-family:var(--mono); }
+.empty-desc  { font-size:10px; color:var(--text4); line-height:1.6; max-width:200px; font-family:var(--mono); }
+.hint { font-size:10px; color:var(--text4); font-family:var(--mono); line-height:1.6; padding:4px 0; }
+
+.toast {
+  position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(8px);
+  background:var(--surface3); border:1px solid var(--border2); border-radius:5px;
+  padding:7px 14px; font-size:11px; color:var(--text2); font-weight:500;
+  z-index:9999; opacity:0; transition:all .2s; pointer-events:none; font-family:var(--mono);
+}
+.toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* ══ IMPORT MODAL ════════════════════════════════════════════════════════════ */
+
+.modal-backdrop {
+  position:fixed; inset:0; background:rgba(0,0,0,.6);
+  z-index:500; backdrop-filter:blur(4px);
+}
+.modal {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  width:480px; max-width:calc(100vw - 32px);
+  background:var(--surface); border:1px solid var(--border2);
+  border-radius:10px; z-index:501;
+  display:flex; flex-direction:column; overflow:hidden;
+  box-shadow:0 24px 64px rgba(0,0,0,.6);
+}
+.modal-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:14px 16px; border-bottom:1px solid var(--border);
+}
+.modal-title { font-size:14px; font-weight:600; color:var(--text); }
+.modal-tabs  { display:flex; border-bottom:1px solid var(--border); }
+.modal-tab {
+  flex:1; height:36px; background:transparent; border:none;
+  color:var(--text3); font-family:var(--mono); font-size:10px; font-weight:500;
+  cursor:pointer; transition:all .12s; letter-spacing:.8px;
+  border-bottom:2px solid transparent; text-transform:uppercase;
+}
+.modal-tab.active { color:var(--text); border-bottom-color:var(--text); }
+.modal-body { padding:16px; }
+.modal-field-label { font-size:9px; font-weight:600; color:var(--text3); letter-spacing:1px; text-transform:uppercase; font-family:var(--mono); margin-bottom:7px; }
+.modal-url-row { display:flex; gap:7px; margin-bottom:10px; }
+.modal-input {
+  flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:var(--r);
+  padding:8px 10px; color:var(--text); font-family:var(--mono); font-size:12px;
+  outline:none; transition:border-color .12s;
+}
+.modal-input:focus { border-color:var(--border3); }
+.modal-note { font-size:10px; color:var(--text3); font-family:var(--mono); line-height:1.6; padding:8px; background:var(--surface2); border-radius:var(--r); border:1px solid var(--border); }
+.modal-error { font-size:11px; color:#e88; font-family:var(--mono); margin-top:8px; padding:8px; background:rgba(255,80,80,.08); border:1px solid rgba(255,80,80,.2); border-radius:var(--r); }
+.modal-footer { padding:12px 16px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:7px; }
+.modal-page-label { font-size:9px; font-weight:600; color:var(--text3); letter-spacing:1px; text-transform:uppercase; font-family:var(--mono); }
+
+/* Drop zone */
+.drop-zone {
+  border:2px dashed var(--border2); border-radius:var(--r);
+  padding:36px 20px; text-align:center; cursor:pointer;
+  transition:all .15s; margin-bottom:12px;
+}
+.drop-zone:hover,.drop-zone.drag-over { border-color:var(--border3); background:var(--surface2); }
+.drop-icon  { font-size:28px; opacity:.3; margin-bottom:10px; }
+.drop-title { font-size:14px; font-weight:600; color:var(--text2); margin-bottom:4px; }
+.drop-sub   { font-size:11px; color:var(--text3); font-family:var(--mono); }
+
+</style>
+</head>
+<body>
+
+<!-- ══ TOP BAR ════════════════════════════════════════════════════════════════ -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-dot"></div>
+    GSAP Studio
+  </div>
+
+  <!-- Import bar -->
+  <div class="import-bar">
+    <button class="btn btn-sm" onclick="openImportModal()" title="Import HTML file or URL">
+      ＋ Import page
+    </button>
+    <!-- page tabs rendered here by JS -->
+    <div class="page-tabs" id="page-tabs"></div>
+  </div>
+
+  <div class="topbar-right">
+    <div class="undo-group">
+      <button class="btn btn-sm" id="btn-undo" onclick="undo()" disabled title="Undo ⌘Z">↩</button>
+      <button class="btn btn-sm" id="btn-redo" onclick="redo()" disabled title="Redo ⌘⇧Z">↪</button>
+    </div>
+    <span class="mode-badge" id="mode-badge">PREVIEW</span>
+    <button class="btn" id="toggle-select-btn" onclick="toggleSelectMode()">⊹ Select</button>
+    <button class="btn" onclick="previewAll()">▶ Preview</button>
+    <button class="btn" onclick="resetAll()">↺ Reset</button>
+    <button class="btn btn-primary" onclick="showTab('code')">Export JS</button>
+  </div>
+</div>
+
+
+<!-- ══ MAIN ROW ═══════════════════════════════════════════════════════════════ -->
+<div class="main-row">
+
+  <!-- ── CANVAS COLUMN ──────────────────────────────────────────────────────── -->
+  <div class="canvas-col">
+
+    <!-- The sandbox: shows either the iframe or the welcome screen -->
+    <div class="demo-site" id="demo-site">
+
+      <!-- Welcome / empty state -->
+      <div class="welcome-screen" id="welcome-screen">
+        <div class="welcome-icon">⊹</div>
+        <div class="welcome-title">No page loaded</div>
+        <div class="welcome-desc">Import an HTML file or fetch a URL to start animating real elements.</div>
+        <div class="welcome-actions">
+          <button class="btn btn-primary" onclick="openImportModal()">＋ Import page</button>
+          <button class="btn" onclick="loadDemoPage()">Load demo page</button>
+        </div>
+        <div class="welcome-hint">Or drag &amp; drop an HTML file anywhere</div>
+      </div>
+
+      <iframe id="page-frame" class="page-frame" style="display:none"
+              title="Page sandbox"></iframe>
+
+      <!-- Overlay: hover + selected highlights live here, on top of iframe -->
+      <div class="overlay-layer" id="overlay-layer" style="display:none">
+        <div class="hover-highlight" id="hover-highlight">
+          <div class="hover-label" id="hover-label"></div>
+        </div>
+        <div id="selected-highlights"></div>
+      </div>
+
+      <!-- Instruction nudge -->
+      <div class="instruction-overlay" id="instruction-overlay" style="display:none">
+        <div class="instruction-title">Click any element to animate it</div>
+        <div class="instruction-desc">Enable ⊹ Select mode · hover to highlight · click to capture</div>
+      </div>
+
+      <!-- Loading spinner -->
+      <div class="loading-overlay" id="loading-overlay" style="display:none">
+        <div class="spinner"></div>
+        <div class="loading-text" id="loading-text">Loading…</div>
+      </div>
+
+      <!-- Collapse tab -->
+      <div class="collapse-tab" id="collapse-tab" onclick="togglePanel()" title="Toggle panel ⌘[">›</div>
+    </div>
+
+    <!-- ── TIMELINE ── -->
+    <div class="timeline-section" id="timeline-section">
+      <div class="timeline-resize-handle" id="timeline-resize-handle"></div>
+      <div class="timeline-toolbar">
+        <span class="timeline-toolbar-label">Timeline</span>
+        <div style="flex:1"></div>
+        <button class="btn btn-sm" onclick="previewAll()">▶ Play</button>
+        <button class="btn btn-sm" onclick="resetAll()">↺</button>
+      </div>
+      <div class="timeline-body" id="timeline-body">
+        <div class="tl-empty">No animations yet — import a page and select elements</div>
+      </div>
+    </div>
+
+    <!-- Status -->
+    <div class="status-bar">
+      <div class="status-dot"></div>
+      <span id="status-text">Ready — import a page to begin</span>
+      <span>·</span>
+      <span id="anim-count">0 animations</span>
+      <span>·</span>
+      <span id="page-count">0 pages</span>
+      <span>·</span>
+      <span>GSAP 3.12</span>
+    </div>
+
+  </div><!-- /canvas-col -->
+
+  <div class="resize-handle" id="resize-handle"></div>
+
+  <!-- ── RIGHT PANEL ─────────────────────────────────────────────────────────── -->
+  <div class="right-panel" id="right-panel">
+    <div class="panel-tabs">
+      <button class="panel-tab active" onclick="showTab('animate')" id="tab-animate">Animate</button>
+      <button class="panel-tab"        onclick="showTab('layers')"  id="tab-layers">Layers</button>
+      <button class="panel-tab"        onclick="showTab('code')"    id="tab-code">Code</button>
+    </div>
+
+    <!-- ANIMATE -->
+    <div class="tab-content active" id="tab-animate-content">
+      <div class="panel-body">
+        <div class="empty-state" id="empty-state">
+          <div class="empty-icon">⊹</div>
+          <div class="empty-title">No element selected</div>
+          <div class="empty-desc">Import a page, enable Select mode, then click any element.</div>
+        </div>
+        <div id="anim-config" style="display:none">
+          <div class="edit-indicator" id="edit-indicator" style="display:none">
+            <div class="edit-indicator-dot"></div>
+            <span id="edit-indicator-text">Editing…</span>
+            <div style="flex:1"></div>
+            <button class="btn btn-sm" onclick="cancelEdit()">Cancel</button>
+          </div>
+
+          <div class="section-header">Target Selector</div>
+          <div class="selector-display">
+            <span style="color:var(--text3)">⌖</span>
+            <input class="selector-input" id="selector-input" type="text" placeholder="click element…"/>
+          </div>
+
+          <div class="section-header">Type</div>
+          <div class="anim-type-grid">
+            <button class="anim-type-btn active" onclick="setAnimType('fade')"   id="type-fade"><span class="anim-icon">◌</span>Fade</button>
+            <button class="anim-type-btn"        onclick="setAnimType('slide')"  id="type-slide"><span class="anim-icon">→</span>Slide</button>
+            <button class="anim-type-btn"        onclick="setAnimType('scale')"  id="type-scale"><span class="anim-icon">⊞</span>Scale</button>
+            <button class="anim-type-btn"        onclick="setAnimType('rotate')" id="type-rotate"><span class="anim-icon">↻</span>Rotate</button>
+          </div>
+
+          <div class="section-header">Presets</div>
+          <div class="preset-row">
+            <div class="preset-chip" onclick="applyPreset('hero-in')">hero-in</div>
+            <div class="preset-chip" onclick="applyPreset('fade-up')">fade-up</div>
+            <div class="preset-chip" onclick="applyPreset('bounce-in')">bounce</div>
+            <div class="preset-chip" onclick="applyPreset('slide-left')">slide-left</div>
+            <div class="preset-chip" onclick="applyPreset('zoom-in')">zoom-in</div>
+            <div class="preset-chip" onclick="applyPreset('flip')">flip</div>
+          </div>
+
+          <div class="section-header">Method &amp; Ease</div>
+          <div class="field-row">
+            <div class="field">
+              <div class="field-label">Method</div>
+              <select class="field-input" id="gsap-method" onchange="syncFromFields()">
+                <option value="from">gsap.from()</option>
+                <option value="to">gsap.to()</option>
+                <option value="fromTo">gsap.fromTo()</option>
+              </select>
+            </div>
+            <div class="field">
+              <div class="field-label">Ease</div>
+              <select class="field-input" id="ease-input" onchange="syncFromFields()">
+                <option value="power3.out">power3.out</option>
+                <option value="power1.out">power1.out</option>
+                <option value="power2.inOut">power2.inOut</option>
+                <option value="bounce.out">bounce.out</option>
+                <option value="elastic.out(1,0.3)">elastic.out</option>
+                <option value="back.out(1.7)">back.out</option>
+                <option value="none">none (linear)</option>
+                <option value="circ.out">circ.out</option>
+                <option value="expo.out">expo.out</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="section-header">Timing</div>
+          <div class="range-row">
+            <div class="range-header"><span class="field-label">Duration</span><span class="range-val" id="duration-val">1.0s</span></div>
+            <input type="range" min="0.1" max="3" step="0.1" value="1" id="duration-slider" oninput="updateRange(this,'duration-val','s');syncFromFields()">
+          </div>
+          <div class="range-row">
+            <div class="range-header"><span class="field-label">Delay</span><span class="range-val" id="delay-val">0.0s</span></div>
+            <input type="range" min="0" max="2" step="0.1" value="0" id="delay-slider" oninput="updateRange(this,'delay-val','s');syncFromFields()">
+          </div>
+
+          <div class="divider"></div>
+          <div class="section-header">Transform</div>
+          <div class="field-row">
+            <div class="field"><div class="field-label">X (px)</div><input class="field-input" type="number" id="x-input" value="0" oninput="syncFromFields()"></div>
+            <div class="field"><div class="field-label">Y (px)</div><input class="field-input" type="number" id="y-input" value="60" oninput="syncFromFields()"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><div class="field-label">Scale</div><input class="field-input" type="number" id="scale-input" value="1" step="0.1" oninput="syncFromFields()"></div>
+            <div class="field"><div class="field-label">Opacity</div><input class="field-input" type="number" id="opacity-input" value="0" step="0.1" min="0" max="1" oninput="syncFromFields()"></div>
+          </div>
+          <div class="field-row">
+            <div class="field"><div class="field-label">Rotation °</div><input class="field-input" type="number" id="rotation-input" value="0" oninput="syncFromFields()"></div>
+            <div class="field"><div class="field-label">Stagger (s)</div><input class="field-input" type="number" id="stagger-input" value="0" step="0.05" oninput="syncFromFields()"></div>
+          </div>
+
+          <div class="divider"></div>
+          <div class="toggle-row">
+            <span class="toggle-label">ScrollTrigger</span>
+            <div class="toggle" id="scroll-toggle" onclick="toggleScrollTrigger()"></div>
+          </div>
+          <div class="st-panel" id="st-panel" style="display:none">
+            <div class="st-title">ScrollTrigger options</div>
+            <div class="field-row">
+              <div class="field"><div class="field-label">Start</div><input class="field-input" type="text" id="st-start" value="top 80%" oninput="syncFromFields()"></div>
+              <div class="field"><div class="field-label">End</div><input class="field-input" type="text" id="st-end" value="bottom 20%" oninput="syncFromFields()"></div>
+            </div>
+            <div class="toggle-row" style="margin-bottom:0">
+              <span class="toggle-label">Scrub</span>
+              <div class="toggle" id="scrub-toggle" onclick="toggleScrub()"></div>
+            </div>
+          </div>
+          <div class="toggle-row">
+            <span class="toggle-label">Add to timeline (tl)</span>
+            <div class="toggle" id="timeline-toggle" onclick="toggleTimeline()"></div>
+          </div>
+          <button class="add-anim-btn" id="add-anim-btn" onclick="commitAnimation()">+ Add to stack</button>
+        </div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn" onclick="clearSelected()">Clear</button>
+        <button class="btn" id="commit-btn" onclick="commitAnimation()">Add Animation</button>
+      </div>
+    </div>
+
+    <!-- LAYERS -->
+    <div class="tab-content" id="tab-layers-content">
+      <div class="panel-body">
+        <div class="section-header">Animation Stack</div>
+        <div id="animations-list"></div>
+      </div>
+      <div class="panel-footer">
+        <button class="btn" onclick="clearAllAnimations()">Clear All</button>
+        <button class="btn" onclick="previewAll()">▶ Preview All</button>
+      </div>
+    </div>
+
+    <!-- CODE -->
+    <div class="tab-content" id="tab-code-content">
+      <div class="panel-body">
+        <div class="section-header">GSAP Code — live editable</div>
+        <div class="code-editor-wrap">
+          <div class="code-toolbar">
+            <span class="code-lang">JavaScript</span>
+            <span class="code-dirty-badge" id="dirty-badge">parsing…</span>
+            <button class="btn btn-sm" onclick="copyCode()">copy</button>
+          </div>
+          <textarea class="code-editor" id="code-editor" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
+          <div class="parse-error" id="parse-error"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="section-header">CDN Script Tags</div>
+        <div class="code-block">
+          <div class="code-toolbar">
+            <span class="code-lang">HTML</span>
+            <button class="btn btn-sm" onclick="copyCDN()">copy</button>
+          </div>
+          <div class="code-content" id="cdn-output"></div>
+        </div>
+        <div class="divider"></div>
+        <p class="hint">Edit JS directly — changes sync back in 500ms. Paste into a &lt;script&gt; tag in your project.</p>
+      </div>
+      <div class="panel-footer">
+        <button class="btn" onclick="copyCode()">Copy JS</button>
+        <button class="btn btn-primary" onclick="downloadCode()">Download .js</button>
+      </div>
+    </div>
+
+  </div><!-- /right-panel -->
+</div><!-- /main-row -->
+
+
+<!-- ══ IMPORT MODAL ════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="modal-backdrop" style="display:none" onclick="closeImportModal()"></div>
+<div class="modal" id="import-modal" style="display:none">
+  <div class="modal-header">
+    <span class="modal-title">Import Page</span>
+    <button class="btn btn-sm" onclick="closeImportModal()">✕</button>
+  </div>
+
+  <div class="modal-tabs">
+    <button class="modal-tab active" id="mtab-url"  onclick="switchModalTab('url')">URL Fetch</button>
+    <button class="modal-tab"        id="mtab-file" onclick="switchModalTab('file')">HTML File</button>
+  </div>
+
+  <!-- URL tab -->
+  <div class="modal-body" id="mtab-url-body">
+    <div class="modal-field-label">Page URL</div>
+    <div class="modal-url-row">
+      <input class="modal-input" id="url-input" type="url"
+             placeholder="https://example.com"
+             onkeydown="if(e.key==='Enter')fetchUrl()"/>
+      <button class="btn btn-primary" onclick="fetchUrl()">Fetch</button>
+    </div>
+    <div class="modal-note" id="url-note">
+      ⚠ Most production sites block cross-origin fetches (CORS). Works best with your own sites, local dev servers, or sites that allow it. If it fails, use the HTML File tab instead.
+    </div>
+    <div class="modal-error" id="url-error" style="display:none"></div>
+  </div>
+
+  <!-- File tab -->
+  <div class="modal-body" id="mtab-file-body" style="display:none">
+    <div class="drop-zone" id="drop-zone"
+         onclick="document.getElementById('file-input').click()"
+         ondragover="event.preventDefault();this.classList.add('drag-over')"
+         ondragleave="this.classList.remove('drag-over')"
+         ondrop="handleFileDrop(event)">
+      <div class="drop-icon">⎙</div>
+      <div class="drop-title">Drop HTML file here</div>
+      <div class="drop-sub">or click to browse</div>
+    </div>
+    <input type="file" id="file-input" accept=".html,.htm" style="display:none" onchange="handleFileInput(event)">
+    <div class="modal-note">
+      Relative asset paths (images, fonts, CSS) work best when all files are in the same folder or use absolute URLs.
+    </div>
+  </div>
+
+  <div class="modal-footer">
+    <div class="modal-page-label">Page name (optional)</div>
+    <input class="modal-input" id="page-name-input" type="text" placeholder="Home, About, etc."/>
+  </div>
+</div>
+
+
+<!-- ══ TOAST ══════════════════════════════════════════════════════════════════ -->
+<div class="toast" id="toast"></div>
+
+<!-- ══ GLOBAL DRAG-DROP (file onto app) ═══════════════════════════════════════ -->
+<script>
+document.addEventListener('dragover', e => e.preventDefault());
+document.addEventListener('drop', e => {
+  e.preventDefault();
+  const file = e.dataTransfer.files[0];
+  if (file && (file.name.endsWith('.html') || file.name.endsWith('.htm'))) {
+    loadHtmlFile(file);
+  }
+});
+</script>
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════
+   GSAP ANIMATION STUDIO — studio.js  v4
+   · Multi-page import (HTML file + URL fetch)
+   · iframe sandbox with postMessage bridge for selection
+   · URL rewriting for assets/fonts/styles
+   · Link interception for in-page navigation
+   · Per-page animation isolation
+   · All v3 features: undo/redo, resize, code editor, drag-reorder
+═══════════════════════════════════════════════════════════════════ */
+
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════════
+
+const state = {
+  // Pages registry
+  pages:          [],       // [{id, label, url, html, baseUrl, animations:[]}]
+  activePageId:   null,
+
+  // Per-session (not persisted to pages)
+  selectMode:       false,
+  editingId:        null,
+  selectedAnimId:   null,
+  scrollTriggerOn:  false,
+  scrubOn:          false,
+  timelineOn:       false,
+  panelCollapsed:   false,
+  panelWidth:       300,
+  timelineHeight:   140,
+  undoStack:        [],
+  redoStack:        [],
+  codeParseTimer:   null,
+  dragSrcIndex:     null,
+
+  // iframe bridge
+  frameReady:       false,
+  hoverEl:          null,   // {selector, rect}
+  selectedSelector: '',
+};
+
+// Shorthand: get current page's animations[]
+function getAnims()    { const p = activePage(); return p ? p.animations : []; }
+function activePage()  { return state.pages.find(p => p.id === state.activePageId) || null; }
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DOM REFS
+// ══════════════════════════════════════════════════════════════════════════════
+
+const frame             = document.getElementById('page-frame');
+const overlayLayer      = document.getElementById('overlay-layer');
+const hoverHighlight    = document.getElementById('hover-highlight');
+const hoverLabel        = document.getElementById('hover-label');
+const selectedHighlights= document.getElementById('selected-highlights');
+const instructionOverlay= document.getElementById('instruction-overlay');
+const emptyState        = document.getElementById('empty-state');
+const animConfig        = document.getElementById('anim-config');
+const selectorInput     = document.getElementById('selector-input');
+const codeEditor        = document.getElementById('code-editor');
+const toast             = document.getElementById('toast');
+const timelineBody      = document.getElementById('timeline-body');
+const timelineSection   = document.getElementById('timeline-section');
+const tlResizeHandle    = document.getElementById('timeline-resize-handle');
+const rightPanel        = document.getElementById('right-panel');
+const resizeHandle      = document.getElementById('resize-handle');
+const collapseTab       = document.getElementById('collapse-tab');
+const editIndicator     = document.getElementById('edit-indicator');
+const editIndicatorText = document.getElementById('edit-indicator-text');
+const addAnimBtn        = document.getElementById('add-anim-btn');
+const commitBtn         = document.getElementById('commit-btn');
+const dirtyBadge        = document.getElementById('dirty-badge');
+const parseError        = document.getElementById('parse-error');
+const welcomeScreen     = document.getElementById('welcome-screen');
+const loadingOverlay    = document.getElementById('loading-overlay');
+const loadingText       = document.getElementById('loading-text');
+const pageTabs          = document.getElementById('page-tabs');
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IFRAME CONTENT SCRIPT
+// Injected into the frame's srcdoc — communicates via postMessage
+// ══════════════════════════════════════════════════════════════════════════════
+
+const FRAME_SCRIPT = `
+(function() {
+  'use strict';
+  let selectMode = false;
+  let lastHovered = null;
+
+  // Generate a stable CSS selector for an element
+  function getSelector(el) {
+    if (el.id) return '#' + el.id;
+    // Try meaningful class combo
+    const cls = Array.from(el.classList)
+      .filter(c => !c.startsWith('gsap-') && c.length < 40)
+      .slice(0, 3).join('.');
+    if (cls) {
+      const sel = el.tagName.toLowerCase() + '.' + cls;
+      if (document.querySelectorAll(sel).length <= 5) return '.' + cls;
+    }
+    // data attributes
+    for (const attr of el.attributes) {
+      if (attr.name.startsWith('data-') && attr.value.length < 30) {
+        return '[' + attr.name + '="' + attr.value + '"]';
+      }
+    }
+    // Path fallback
+    return buildPath(el);
+  }
+
+  function buildPath(el) {
+    const parts = [];
+    let cur = el;
+    while (cur && cur !== document.body) {
+      let seg = cur.tagName.toLowerCase();
+      const parent = cur.parentElement;
+      if (parent) {
+        const siblings = Array.from(parent.children).filter(c => c.tagName === cur.tagName);
+        if (siblings.length > 1) seg += ':nth-of-type(' + (siblings.indexOf(cur) + 1) + ')';
+      }
+      parts.unshift(seg);
+      cur = cur.parentElement;
+      if (parts.length > 4) break;
+    }
+    return parts.join(' > ');
+  }
+
+  function getRect(el) {
+    const r = el.getBoundingClientRect();
+    return { top: r.top + window.scrollY, left: r.left, width: r.width, height: r.height, scrollY: window.scrollY };
+  }
+
+  // Listen for commands from parent
+  window.addEventListener('message', e => {
+    if (e.data.type === 'SET_SELECT_MODE') {
+      selectMode = e.data.value;
+      document.body.style.cursor = selectMode ? 'crosshair' : '';
+    }
+    if (e.data.type === 'PREVIEW_ANIM') runPreview(e.data.anim);
+    if (e.data.type === 'PREVIEW_ALL')  runAllPreviews(e.data.anims);
+    if (e.data.type === 'RESET_ALL')    resetAll();
+  });
+
+  // Hover
+  document.addEventListener('mouseover', e => {
+    if (!selectMode) return;
+    const el = e.target;
+    if (!el || el === document.body || el === document.documentElement) return;
+    lastHovered = el;
+    window.parent.postMessage({ type: 'HOVER', selector: getSelector(el), rect: getRect(el) }, '*');
+  });
+
+  document.addEventListener('mouseout', e => {
+    if (!selectMode) return;
+    window.parent.postMessage({ type: 'HOVER_OUT' }, '*');
+  });
+
+  // Click to select
+  document.addEventListener('click', e => {
+    if (!selectMode) return;
+    e.preventDefault(); e.stopPropagation();
+    const el = e.target;
+    if (!el || el === document.body) return;
+    const sel = getSelector(el);
+    const rect = getRect(el);
+    window.parent.postMessage({ type: 'SELECT', selector: sel, rect, tag: el.tagName.toLowerCase() }, '*');
+  }, true);
+
+  // Link interception — navigate within studio
+  document.addEventListener('click', e => {
+    if (selectMode) return;
+    const a = e.target.closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+    e.preventDefault();
+    window.parent.postMessage({ type: 'NAVIGATE', href: a.href }, '*');
+  });
+
+  // Preview helpers
+  function fromProps(a) {
+    const f = {};
+    if (a.x) f.x = a.x; if (a.y) f.y = a.y;
+    if (a.scale !== 1) f.scale = a.scale;
+    if (a.opacity !== 1) f.opacity = a.opacity;
+    if (a.rotation) f.rotation = a.rotation;
+    return f;
+  }
+  function tStr(f) {
+    let t='';
+    if(f.x) t+='translateX('+f.x+'px) ';
+    if(f.y) t+='translateY('+f.y+'px) ';
+    if(f.scale) t+='scale('+f.scale+') ';
+    if(f.rotation) t+='rotate('+f.rotation+'deg) ';
+    return t.trim()||'none';
+  }
+  function runPreview(a) {
+    const els = document.querySelectorAll(a.selector);
+    if (!els.length) return;
+    const f = fromProps(a);
+    els.forEach(el=>{ el.style.transform=tStr(f); el.style.opacity=f.opacity!==undefined?f.opacity:''; el.style.transition='none'; });
+    setTimeout(()=>{ els.forEach(el=>{ el.style.transition='all '+a.duration+'s cubic-bezier(.16,1,.3,1)'; el.style.transform=''; el.style.opacity=''; }); }, 50);
+  }
+  function runAllPreviews(anims) {
+    resetAll();
+    anims.forEach(a => {
+      const f = fromProps(a);
+      const els = document.querySelectorAll(a.selector);
+      if (!els.length) return;
+      els.forEach(el=>{ el.style.transform=tStr(f); el.style.opacity=f.opacity!==undefined?f.opacity:''; el.style.transition='none'; });
+      setTimeout(()=>{ els.forEach(el=>{ el.style.transition='all '+a.duration+'s cubic-bezier(.16,1,.3,1)'; el.style.transform=''; el.style.opacity=''; }); }, (a.delay||0)*1000+50);
+    });
+  }
+  function resetAll() {
+    document.querySelectorAll('*').forEach(el=>{ if(el.style.transition||el.style.transform){ el.style.transform=el.style.opacity=el.style.transition=''; } });
+  }
+
+  // Signal ready
+  window.parent.postMessage({ type: 'FRAME_READY' }, '*');
+})();
+`;
+
+// ══════════════════════════════════════════════════════════════════════════════
+// postMessage BRIDGE — receive from iframe
+// ══════════════════════════════════════════════════════════════════════════════
+
+window.addEventListener('message', e => {
+  const d = e.data;
+  if (!d || !d.type) return;
+
+  switch (d.type) {
+    case 'FRAME_READY':
+      state.frameReady = true;
+      sendToFrame('SET_SELECT_MODE', { value: state.selectMode });
+      break;
+
+    case 'HOVER':
+      if (!state.selectMode) return;
+      showHoverHighlight(d.selector, d.rect);
+      break;
+
+    case 'HOVER_OUT':
+      hoverHighlight.style.display = 'none';
+      break;
+
+    case 'SELECT':
+      if (!state.selectMode) return;
+      handleSelect(d.selector, d.rect);
+      break;
+
+    case 'NAVIGATE':
+      handleFrameNavigate(d.href);
+      break;
+  }
+});
+
+function sendToFrame(type, data = {}) {
+  try { frame.contentWindow.postMessage({ type, ...data }, '*'); } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HOVER + SELECT HANDLING (overlay positioned over iframe)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function showHoverHighlight(selector, rect) {
+  const frameRect = frame.getBoundingClientRect();
+  hoverHighlight.style.display = 'block';
+  hoverHighlight.style.left    = (frameRect.left + rect.left) + 'px';
+  hoverHighlight.style.top     = (frameRect.top  + rect.top - rect.scrollY) + 'px';
+  hoverHighlight.style.width   = rect.width  + 'px';
+  hoverHighlight.style.height  = rect.height + 'px';
+  // reposition label above
+  const labelTop = (frameRect.top + rect.top - rect.scrollY - 22);
+  hoverHighlight.style.top = Math.max(frameRect.top + 2, (frameRect.top + rect.top - rect.scrollY)) + 'px';
+  hoverLabel.textContent = selector;
+}
+
+function handleSelect(selector, rect) {
+  state.selectedSelector = selector;
+  selectorInput.value    = selector;
+
+  emptyState.style.display        = 'none';
+  animConfig.style.display        = 'block';
+  instructionOverlay.style.display = 'none';
+
+  if (state.panelCollapsed) togglePanel();
+  showSelectedHighlight(selector, rect);
+  setStatus(`Selected: ${selector}`);
+  syncFromFields();
+}
+
+function showSelectedHighlight(selector, rect) {
+  selectedHighlights.innerHTML = '';
+  const frameRect = frame.getBoundingClientRect();
+  const top = frameRect.top + rect.top - rect.scrollY;
+
+  const div = document.createElement('div');
+  div.className = 'selected-highlight';
+  div.style.cssText = `left:${frameRect.left + rect.left}px;top:${Math.max(frameRect.top+2, top)}px;width:${rect.width}px;height:${rect.height}px`;
+
+  const lbl = document.createElement('div');
+  lbl.className = 'selected-label'; lbl.textContent = selector;
+  div.appendChild(lbl); selectedHighlights.appendChild(div);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PAGE MANAGEMENT
+// ══════════════════════════════════════════════════════════════════════════════
+
+function createPage(label, html, baseUrl = '') {
+  return {
+    id:         Date.now() + Math.random(),
+    label,
+    html,
+    baseUrl,
+    animations: [],
+  };
+}
+
+function addPage(page) {
+  state.pages.push(page);
+  renderPageTabs();
+  switchPage(page.id);
+  updatePageCount();
+}
+
+function switchPage(id) {
+  // Save current animations back to current page before switching
+  if (state.activePageId) {
+    const cur = activePage();
+    if (cur) cur.animations = [...getAnims()];
+  }
+
+  state.activePageId   = id;
+  state.editingId      = null;
+  state.selectedAnimId = null;
+  state.selectedSelector = '';
+  state.frameReady     = false;
+
+  clearSelected();
+  renderPageTabs();
+
+  const page = activePage();
+  if (!page) return;
+
+  loadHtmlIntoFrame(page.html, page.baseUrl);
+  afterAnimationsChange();
+  setStatus(`Loaded: ${page.label}`);
+}
+
+function removePage(id) {
+  const idx = state.pages.findIndex(p => p.id === id);
+  if (idx === -1) return;
+  state.pages.splice(idx, 1);
+
+  if (state.activePageId === id) {
+    if (state.pages.length) {
+      switchPage(state.pages[Math.max(0, idx - 1)].id);
+    } else {
+      state.activePageId = null;
+      showWelcomeScreen();
+    }
+  }
+  renderPageTabs();
+  updatePageCount();
+}
+
+function renderPageTabs() {
+  pageTabs.innerHTML = '';
+  state.pages.forEach(page => {
+    const tab = document.createElement('div');
+    tab.className = 'page-tab' + (page.id === state.activePageId ? ' active' : '');
+
+    const favicon = document.createElement('div');
+    favicon.className = 'page-tab-favicon';
+    favicon.textContent = page.label[0]?.toUpperCase() || '?';
+
+    const label = document.createElement('span');
+    label.textContent = page.label;
+    label.style.cssText = 'max-width:120px;overflow:hidden;text-overflow:ellipsis;';
+
+    const close = document.createElement('div');
+    close.className = 'page-tab-close';
+    close.textContent = '×';
+    close.title = 'Remove page';
+    close.onclick = ev => { ev.stopPropagation(); removePage(page.id); };
+
+    tab.onclick = () => { if (page.id !== state.activePageId) switchPage(page.id); };
+    tab.appendChild(favicon); tab.appendChild(label); tab.appendChild(close);
+    pageTabs.appendChild(tab);
+  });
+}
+
+function showWelcomeScreen() {
+  welcomeScreen.style.display = 'flex';
+  frame.style.display         = 'none';
+  overlayLayer.style.display  = 'none';
+  instructionOverlay.style.display = 'none';
+  timelineBody.innerHTML = '<div class="tl-empty">No page loaded — import a page to start</div>';
+}
+
+function hideWelcomeScreen() {
+  welcomeScreen.style.display = 'none';
+  frame.style.display         = 'block';
+  overlayLayer.style.display  = 'block';
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// HTML LOADING — rewrite + inject into iframe srcdoc
+// ══════════════════════════════════════════════════════════════════════════════
+
+function loadHtmlIntoFrame(html, baseUrl) {
+  showLoading('Loading page...');
+  hideWelcomeScreen();
+
+  // Reset ready flag: new srcdoc = fresh frame context
+  state.frameReady = false;
+
+  const rewritten = rewriteUrls(html, baseUrl);
+  const injected  = injectFrameScript(rewritten);
+
+  // One-time load listener instead of .onload assignment (avoids clobbering)
+  const onLoad = () => {
+    frame.removeEventListener('load', onLoad);
+    hideLoading();
+    instructionOverlay.style.display = 'block';
+    // Always push current selectMode into the fresh frame context.
+    // FRAME_READY postMessage may race with this, so both paths send it.
+    setTimeout(() => {
+      sendToFrame('SET_SELECT_MODE', { value: state.selectMode });
+    }, 100);
+  };
+
+  frame.addEventListener('load', onLoad);
+  frame.srcdoc = injected;
+}
+
+function rewriteUrls(html, baseUrl) {
+  if (!baseUrl) return html;
+
+  const base = new URL(baseUrl);
+  const origin = base.origin;
+  const basePath = base.href.substring(0, base.href.lastIndexOf('/') + 1);
+
+  function resolve(url) {
+    if (!url || url.startsWith('data:') || url.startsWith('blob:') ||
+        url.startsWith('http') || url.startsWith('//') || url.startsWith('#')) return url;
+    try {
+      if (url.startsWith('/')) return origin + url;
+      return basePath + url;
+    } catch(e) { return url; }
+  }
+
+  return html
+    // src="..." href="..." url(...)
+    .replace(/\bsrc=["']([^"']+)["']/g,  (m, u) => `src="${resolve(u)}"`)
+    .replace(/\bhref=["']([^"'#][^"']*)["']/g, (m, u) => {
+      // Don't rewrite nav links — keep them for interception
+      if (u.endsWith('.css') || u.endsWith('.png') || u.endsWith('.jpg') || u.endsWith('.woff2') || u.endsWith('.woff') || u.endsWith('.ico')) {
+        return `href="${resolve(u)}"`;
+      }
+      return m; // leave page links alone
+    })
+    .replace(/url\(['"]?([^'")]+)['"]?\)/g, (m, u) => `url("${resolve(u)}")`);
+}
+
+function injectFrameScript(html) {
+  // FRAME_SCRIPT is already a self-executing IIFE — inject verbatim.
+  // Neutralise any </script> sequences inside the injected code.
+  const safe = FRAME_SCRIPT.replace(/<\/script/gi, '<\\\/script');
+  const scriptTag = '<script>\n' + safe + '\n<\/script>';
+  // Prefer injecting before </body>; fall back to appending
+  if (/<\/body>/i.test(html)) {
+    return html.replace(/<\/body>/i, scriptTag + '</body>');
+  }
+  return html + scriptTag;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// FRAME NAVIGATION (link clicks inside iframe)
+// ══════════════════════════════════════════════════════════════════════════════
+
+async function handleFrameNavigate(href) {
+  const page = activePage();
+  if (!page) return;
+
+  // If same origin as current page, try to fetch
+  showLoading(`Navigating to ${href}…`);
+
+  try {
+    const html = await fetchPageHtml(href);
+    page.html    = html;
+    page.baseUrl = href;
+    page.label   = labelFromUrl(href);
+    renderPageTabs();
+    loadHtmlIntoFrame(html, href);
+    setStatus(`Navigated: ${href}`);
+    showToast(`Navigated — animations preserved`);
+  } catch(e) {
+    hideLoading();
+    showToast(`Can't navigate: ${e.message}`);
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// IMPORT MODAL
+// ══════════════════════════════════════════════════════════════════════════════
+
+function openImportModal() {
+  document.getElementById('modal-backdrop').style.display = 'block';
+  document.getElementById('import-modal').style.display  = 'flex';
+  document.getElementById('url-input').focus();
+}
+
+function closeImportModal() {
+  document.getElementById('modal-backdrop').style.display = 'none';
+  document.getElementById('import-modal').style.display  = 'none';
+  document.getElementById('url-error').style.display     = 'none';
+}
+
+function switchModalTab(tab) {
+  document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('mtab-' + tab).classList.add('active');
+  document.getElementById('mtab-url-body').style.display  = tab === 'url'  ? 'block' : 'none';
+  document.getElementById('mtab-file-body').style.display = tab === 'file' ? 'block' : 'none';
+}
+
+// ── URL FETCH ─────────────────────────────────────────────────────────────────
+
+async function fetchUrl() {
+  const url = document.getElementById('url-input').value.trim();
+  if (!url) return;
+
+  const errEl = document.getElementById('url-error');
+  errEl.style.display = 'none';
+
+  let finalUrl = url;
+  if (!finalUrl.startsWith('http')) finalUrl = 'https://' + finalUrl;
+
+  showLoading(`Fetching ${finalUrl}…`);
+  closeImportModal();
+
+  try {
+    const html = await fetchPageHtml(finalUrl);
+    const label = pageNameInput() || labelFromUrl(finalUrl);
+    addPage(createPage(label, html, finalUrl));
+    showToast(`Page loaded: ${label}`);
+  } catch(err) {
+    hideLoading();
+    // Re-open modal with error
+    openImportModal();
+    errEl.textContent = `Fetch failed: ${err.message}. Try the HTML File tab instead.`;
+    errEl.style.display = 'block';
+  }
+}
+
+async function fetchPageHtml(url) {
+  // Try direct first (works for same-origin / CORS-enabled)
+  try {
+    const res = await fetch(url, { mode: 'cors' });
+    if (res.ok) return await res.text();
+  } catch(e) { /* fall through to proxy */ }
+
+  // Proxy fallback
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const res   = await fetch(proxy);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const data  = await res.json();
+  if (!data.contents) throw new Error('Empty response from proxy');
+  return data.contents;
+}
+
+// ── FILE IMPORT ───────────────────────────────────────────────────────────────
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) loadHtmlFile(file);
+}
+
+function handleFileInput(e) {
+  const file = e.target.files[0];
+  if (file) loadHtmlFile(file);
+}
+
+function loadHtmlFile(file) {
+  const label = pageNameInput() || file.name.replace(/\.(html?)/i, '');
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const html = ev.target.result;
+    // For local files, baseUrl is empty — relative paths won't resolve
+    // but styles/scripts using absolute or inline URLs will work
+    addPage(createPage(label, html, ''));
+    closeImportModal();
+    showToast(`File loaded: ${label}`);
+  };
+  reader.readAsText(file);
+}
+
+// ── DEMO PAGE ─────────────────────────────────────────────────────────────────
+
+function loadDemoPage() {
+  const html = getDemoHTML();
+  addPage(createPage('Demo — Luminary', html, ''));
+}
+
+function getDemoHTML() {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Luminary — Demo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',system-ui,sans-serif;background:#fafafa;color:#111}
+  nav{display:flex;justify-content:space-between;align-items:center;padding:20px 72px;border-bottom:1px solid #eee;background:#fff}
+  .nav-logo{font-size:18px;font-weight:700;letter-spacing:-.5px}
+  .nav-links{display:flex;gap:28px}
+  .nav-link{color:#888;font-size:13px;text-decoration:none}
+  .hero{padding:80px 72px 100px;max-width:960px}
+  .hero-tag{display:inline-block;background:#f0f0f0;color:#555;font-size:10px;font-weight:600;padding:3px 10px;border-radius:3px;margin-bottom:20px;letter-spacing:.6px;text-transform:uppercase;border:1px solid #e0e0e0}
+  .hero-title{font-size:60px;font-weight:700;line-height:1.06;color:#111;margin-bottom:20px;letter-spacing:-2px}
+  .hero-subtitle{font-size:17px;color:#777;max-width:480px;line-height:1.65;margin-bottom:36px}
+  .cta-button{display:inline-block;background:#111;color:#fff;padding:13px 28px;border-radius:5px;font-size:14px;font-weight:600;text-decoration:none;border:none;cursor:pointer}
+  .section{padding:80px 72px}
+  .section-title{font-size:34px;font-weight:700;color:#111;margin-bottom:48px;letter-spacing:-1px}
+  .cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .card{background:#fff;border-radius:10px;padding:28px;border:1px solid #e8e8e8}
+  .card-icon{width:40px;height:40px;border-radius:8px;background:#111;margin-bottom:16px;display:flex;align-items:center;justify-content:center;font-size:18px}
+  .card-title{font-size:16px;font-weight:600;color:#111;margin-bottom:8px}
+  .card-text{font-size:13px;color:#888;line-height:1.6}
+  .features{padding:80px 72px;background:#fff;border-top:1px solid #eee}
+  .feature-row{display:flex;gap:48px;align-items:center;margin-bottom:64px}
+  .feature-row:last-child{margin-bottom:0}
+  .feature-copy{flex:1}
+  .feature-visual{flex:1;height:200px;background:#f5f5f5;border-radius:10px;border:1px solid #eee;display:flex;align-items:center;justify-content:center;font-size:40px;color:#ccc}
+  .feature-label{font-size:11px;font-weight:600;color:#888;letter-spacing:.8px;text-transform:uppercase;margin-bottom:12px}
+  .feature-title{font-size:28px;font-weight:700;color:#111;margin-bottom:12px;letter-spacing:-.5px}
+  .feature-desc{font-size:14px;color:#777;line-height:1.7}
+  footer{padding:40px 72px;border-top:1px solid #eee;display:flex;justify-content:space-between;align-items:center}
+  .footer-logo{font-size:16px;font-weight:700;color:#111}
+  .footer-note{font-size:12px;color:#aaa}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Luminary</div>
+  <div class="nav-links">
+    <a href="#" class="nav-link">Product</a>
+    <a href="#" class="nav-link">Pricing</a>
+    <a href="#" class="nav-link">Docs</a>
+    <a href="#" class="nav-link">Blog</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="hero-tag">New Release</div>
+  <h1 class="hero-title">Design meets<br>velocity.</h1>
+  <p class="hero-subtitle">Build faster, ship smarter. The platform that makes complex animations feel effortless for every team.</p>
+  <button class="cta-button">Get started free →</button>
+</div>
+
+<section class="section">
+  <h2 class="section-title">Everything you need</h2>
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-icon">⚡</div>
+      <div class="card-title">Blazing Fast</div>
+      <div class="card-text">Optimized rendering pipeline that keeps every animation at 60fps, even on low-power devices.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">◎</div>
+      <div class="card-title">Pixel Perfect</div>
+      <div class="card-text">Sub-pixel precision with hardware acceleration. Your animations look exactly as designed.</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⊞</div>
+      <div class="card-title">Extensible</div>
+      <div class="card-text">Plugin architecture lets you add custom effects, easing functions, and motion paths.</div>
+    </div>
+  </div>
+</section>
+
+<section class="features">
+  <div class="feature-row">
+    <div class="feature-copy">
+      <div class="feature-label">Timeline</div>
+      <h3 class="feature-title">Sequence with precision</h3>
+      <p class="feature-desc">Build complex multi-step animations with our visual timeline. Control every frame, add staggered reveals, and scrub through the sequence in real time.</p>
+    </div>
+    <div class="feature-visual">🎬</div>
+  </div>
+  <div class="feature-row">
+    <div class="feature-visual">🎯</div>
+    <div class="feature-copy">
+      <div class="feature-label">ScrollTrigger</div>
+      <h3 class="feature-title">Scroll-driven magic</h3>
+      <p class="feature-desc">Animate elements as they enter the viewport. Scrub animations to scroll position for immersive storytelling that feels natural on any device.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-logo">Luminary</div>
+  <div class="footer-note">© 2026 Luminary Inc. All rights reserved.</div>
+</footer>
+
+</body>
+</html>`;
+}
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+
+function labelFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const path = u.pathname.replace(/\/$/, '').split('/').pop();
+    return path || u.hostname;
+  } catch(e) { return url.substring(0, 20); }
+}
+
+function pageNameInput() {
+  return document.getElementById('page-name-input').value.trim();
+}
+
+function showLoading(msg = 'Loading…') {
+  loadingText.textContent = msg;
+  loadingOverlay.style.display = 'flex';
+}
+function hideLoading() {
+  loadingOverlay.style.display = 'none';
+}
+
+function updatePageCount() {
+  document.getElementById('page-count').textContent = `${state.pages.length} page${state.pages.length !== 1 ? 's' : ''}`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SELECT MODE
+// ══════════════════════════════════════════════════════════════════════════════
+
+function toggleSelectMode() {
+  state.selectMode = !state.selectMode;
+  const badge = document.getElementById('mode-badge');
+  const btn   = document.getElementById('toggle-select-btn');
+  badge.textContent = state.selectMode ? 'SELECT' : 'PREVIEW';
+  badge.classList.toggle('active', state.selectMode);
+  btn.classList.toggle('active',   state.selectMode);
+  sendToFrame('SET_SELECT_MODE', { value: state.selectMode });
+  if (!state.selectMode) hoverHighlight.style.display = 'none';
+}
+
+function clearSelected() {
+  state.selectedSelector = '';
+  selectorInput.value    = '';
+  selectedHighlights.innerHTML  = '';
+  hoverHighlight.style.display  = 'none';
+  emptyState.style.display      = 'flex';
+  animConfig.style.display      = 'none';
+  setStatus('Ready — select an element to begin');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UNDO / REDO  (operates on activePage().animations)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function snapshot() {
+  const page = activePage(); if (!page) return;
+  state.undoStack.push({ pageId: page.id, anims: JSON.stringify(page.animations) });
+  if (state.undoStack.length > 60) state.undoStack.shift();
+  state.redoStack = [];
+  updateUndoButtons();
+}
+
+function undo() {
+  if (!state.undoStack.length) return;
+  const page = activePage(); if (!page) return;
+  state.redoStack.push({ pageId: page.id, anims: JSON.stringify(page.animations) });
+  const snap = state.undoStack.pop();
+  if (snap.pageId === page.id) page.animations = JSON.parse(snap.anims);
+  state.editingId = null;
+  afterAnimationsChange(); updateUndoButtons(); showToast('Undo');
+}
+
+function redo() {
+  if (!state.redoStack.length) return;
+  const page = activePage(); if (!page) return;
+  state.undoStack.push({ pageId: page.id, anims: JSON.stringify(page.animations) });
+  const snap = state.redoStack.pop();
+  if (snap.pageId === page.id) page.animations = JSON.parse(snap.anims);
+  state.editingId = null;
+  afterAnimationsChange(); updateUndoButtons(); showToast('Redo');
+}
+
+function updateUndoButtons() {
+  document.getElementById('btn-undo').disabled = state.undoStack.length === 0;
+  document.getElementById('btn-redo').disabled = state.redoStack.length === 0;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PANEL + TIMELINE RESIZE
+// ══════════════════════════════════════════════════════════════════════════════
+
+function applyPanelWidth(w) {
+  state.panelWidth = Math.min(540, Math.max(220, w));
+  rightPanel.style.width = state.panelWidth + 'px';
+}
+applyPanelWidth(state.panelWidth);
+
+resizeHandle.addEventListener('mousedown', e => {
+  if (state.panelCollapsed) return;
+  e.preventDefault();
+  resizeHandle.classList.add('dragging');
+  document.body.style.cssText += 'cursor:col-resize;user-select:none';
+  const sx = e.clientX, sw = state.panelWidth;
+  const mv = e => applyPanelWidth(sw + (sx - e.clientX));
+  const up = () => { resizeHandle.classList.remove('dragging'); document.body.style.cursor=document.body.style.userSelect=''; document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); };
+  document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+});
+
+function togglePanel() {
+  state.panelCollapsed = !state.panelCollapsed;
+  rightPanel.classList.toggle('collapsed', state.panelCollapsed);
+  resizeHandle.classList.toggle('hidden',   state.panelCollapsed);
+  collapseTab.textContent = state.panelCollapsed ? '‹' : '›';
+  if (!state.panelCollapsed) applyPanelWidth(state.panelWidth);
+}
+
+function applyTimelineHeight(h) {
+  state.timelineHeight = Math.min(380, Math.max(32, h));
+  timelineSection.style.height = state.timelineHeight + 'px';
+}
+applyTimelineHeight(state.timelineHeight);
+
+tlResizeHandle.addEventListener('mousedown', e => {
+  e.preventDefault();
+  tlResizeHandle.classList.add('dragging');
+  document.body.style.cssText += 'cursor:row-resize;user-select:none';
+  const sy = e.clientY, sh = state.timelineHeight;
+  const mv = e => applyTimelineHeight(sh + (sy - e.clientY));
+  const up = () => { tlResizeHandle.classList.remove('dragging'); document.body.style.cursor=document.body.style.userSelect=''; document.removeEventListener('mousemove',mv); document.removeEventListener('mouseup',up); };
+  document.addEventListener('mousemove', mv); document.addEventListener('mouseup', up);
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ANIMATION TYPE / PRESETS / FIELDS
+// ══════════════════════════════════════════════════════════════════════════════
+
+const ANIM_DEFAULTS = {
+  fade:  {x:0,y:0,scale:1,opacity:0,rotation:0},
+  slide: {x:0,y:60,scale:1,opacity:0,rotation:0},
+  scale: {x:0,y:0,scale:.8,opacity:0,rotation:0},
+  rotate:{x:0,y:0,scale:1,opacity:0,rotation:-15},
+};
+
+function setAnimType(type) {
+  document.querySelectorAll('.anim-type-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('type-' + type).classList.add('active');
+  const d = ANIM_DEFAULTS[type];
+  setF('x-input',d.x); setF('y-input',d.y); setF('scale-input',d.scale);
+  setF('opacity-input',d.opacity); setF('rotation-input',d.rotation);
+  syncFromFields();
+}
+
+const PRESETS = {
+  'hero-in':   {x:0,y:80,scale:1,opacity:0,rotation:0,  duration:1.2,ease:'power3.out',delay:0},
+  'fade-up':   {x:0,y:40,scale:1,opacity:0,rotation:0,  duration:.8, ease:'power2.out',delay:0},
+  'bounce-in': {x:0,y:0, scale:.3,opacity:0,rotation:0, duration:1.0,ease:'bounce.out',delay:0},
+  'slide-left':{x:-80,y:0,scale:1,opacity:0,rotation:0, duration:.7, ease:'power2.out',delay:0},
+  'zoom-in':   {x:0,y:0, scale:.6,opacity:0,rotation:0, duration:.8, ease:'back.out(1.7)',delay:0},
+  'flip':      {x:0,y:0, scale:1, opacity:0,rotation:-90,duration:.9,ease:'power3.out',delay:0},
+};
+
+function applyPreset(name) {
+  const p = PRESETS[name]; if (!p) return;
+  setF('x-input',p.x); setF('y-input',p.y); setF('scale-input',p.scale);
+  setF('opacity-input',p.opacity); setF('rotation-input',p.rotation);
+  setSl('duration-slider','duration-val',p.duration,'s');
+  setSl('delay-slider','delay-val',p.delay,'s');
+  const s = document.getElementById('ease-input');
+  for (const o of s.options) if (o.value===p.ease){s.value=p.ease;break;}
+  syncFromFields(); showToast(`Preset "${name}" applied`);
+}
+
+function setF(id, val) { document.getElementById(id).value = val; }
+function setSl(id, vid, v, sfx) { document.getElementById(id).value=v; document.getElementById(vid).textContent=parseFloat(v).toFixed(1)+sfx; }
+
+function toggleScrollTrigger() {
+  state.scrollTriggerOn = !state.scrollTriggerOn;
+  document.getElementById('scroll-toggle').classList.toggle('on', state.scrollTriggerOn);
+  document.getElementById('st-panel').style.display = state.scrollTriggerOn ? 'block' : 'none';
+  syncFromFields(); updateCDN();
+}
+function toggleScrub() {
+  state.scrubOn = !state.scrubOn;
+  document.getElementById('scrub-toggle').classList.toggle('on', state.scrubOn);
+  syncFromFields();
+}
+function toggleTimeline() {
+  state.timelineOn = !state.timelineOn;
+  document.getElementById('timeline-toggle').classList.toggle('on', state.timelineOn);
+  syncFromFields();
+}
+
+function readFields() {
+  return {
+    selector:      selectorInput.value.trim() || '.element',
+    method:        document.getElementById('gsap-method').value,
+    ease:          document.getElementById('ease-input').value,
+    duration:      parseFloat(document.getElementById('duration-slider').value),
+    delay:         parseFloat(document.getElementById('delay-slider').value),
+    x:             parseFloat(document.getElementById('x-input').value)       || 0,
+    y:             parseFloat(document.getElementById('y-input').value)       || 0,
+    scale:         parseFloat(document.getElementById('scale-input').value),
+    opacity:       parseFloat(document.getElementById('opacity-input').value),
+    rotation:      parseFloat(document.getElementById('rotation-input').value)|| 0,
+    stagger:       parseFloat(document.getElementById('stagger-input').value) || 0,
+    scrollTrigger: state.scrollTriggerOn,
+    stStart:       document.getElementById('st-start').value,
+    stEnd:         document.getElementById('st-end').value,
+    scrub:         state.scrubOn,
+    inTimeline:    state.timelineOn,
+  };
+}
+
+function populateFields(p) {
+  selectorInput.value = p.selector || '';
+  setF('x-input',p.x??0); setF('y-input',p.y??0);
+  setF('scale-input',p.scale??1); setF('opacity-input',p.opacity??0);
+  setF('rotation-input',p.rotation??0); setF('stagger-input',p.stagger??0);
+  setSl('duration-slider','duration-val',p.duration??1,'s');
+  setSl('delay-slider','delay-val',p.delay??0,'s');
+  const e=document.getElementById('ease-input');
+  for(const o of e.options) if(o.value===p.ease){e.value=p.ease;break;}
+  document.getElementById('gsap-method').value = p.method||'from';
+  state.scrollTriggerOn=!!p.scrollTrigger; state.scrubOn=!!p.scrub; state.timelineOn=!!p.inTimeline;
+  document.getElementById('scroll-toggle').classList.toggle('on',state.scrollTriggerOn);
+  document.getElementById('st-panel').style.display=state.scrollTriggerOn?'block':'none';
+  document.getElementById('scrub-toggle').classList.toggle('on',state.scrubOn);
+  document.getElementById('timeline-toggle').classList.toggle('on',state.timelineOn);
+  if(p.stStart) setF('st-start',p.stStart);
+  if(p.stEnd)   setF('st-end',p.stEnd);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// SYNC FIELDS → CODE
+// ══════════════════════════════════════════════════════════════════════════════
+
+function syncFromFields() {
+  if (state.editingId !== null) {
+    const page = activePage(); if (!page) return;
+    const idx = page.animations.findIndex(a => a.id === state.editingId);
+    if (idx !== -1) { page.animations[idx] = {...page.animations[idx], ...readFields()}; renderTimeline(); renderAnimationsList(); }
+  }
+  codeEditor.value = generateFullCode();
+  clearCodeError();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CODE EDITOR — 500ms debounce parse
+// ══════════════════════════════════════════════════════════════════════════════
+
+codeEditor.addEventListener('input', () => {
+  dirtyBadge.textContent = 'parsing…'; dirtyBadge.classList.add('visible');
+  clearTimeout(state.codeParseTimer);
+  state.codeParseTimer = setTimeout(parseCodeEditor, 500);
+});
+
+function parseCodeEditor() {
+  const raw = codeEditor.value;
+  try {
+    const parsed = parseGSAPCode(raw);
+    const page   = activePage(); if (!page) return;
+    snapshot();
+    page.animations = parsed;
+    state.editingId = null;
+    afterAnimationsChange(false);
+    dirtyBadge.textContent = `${parsed.length} anim${parsed.length!==1?'s':''} parsed`;
+    setTimeout(() => dirtyBadge.classList.remove('visible'), 1800);
+    clearCodeError(); showToast('Code synced ✓');
+  } catch(err) { showCodeError(err.message); dirtyBadge.classList.remove('visible'); }
+}
+
+function showCodeError(msg) { parseError.textContent='⚠ '+msg; parseError.classList.add('visible'); }
+function clearCodeError()   { parseError.classList.remove('visible'); }
+
+function parseGSAPCode(code) {
+  const results = [];
+  const callRe = /gsap\.(from|to|fromTo)\s*\(\s*["'`]([^"'`]+)["'`]\s*,\s*(\{[\s\S]*?\})\s*\)/g;
+  const tlRe   = /tl\.(from|to|fromTo)\s*\(\s*["'`]([^"'`]+)["'`]\s*,\s*(\{[\s\S]*?\})\s*(?:,\s*["'`][^"'`]*["'`])?\s*\)/g;
+  function extractObj(s) { return Function('"use strict";return('+s+')')(); }
+  function objToAnim(method, selector, obj, inTimeline) {
+    const st = obj.scrollTrigger;
+    return { id: Date.now()+Math.random(), selector, method,
+      ease: obj.ease||'power3.out', duration: obj.duration??1, delay: obj.delay??0,
+      x: obj.x??0, y: obj.y??0, scale: obj.scale??1, opacity: obj.opacity??(method==='to'?1:0),
+      rotation: obj.rotation??0, stagger: obj.stagger??0,
+      scrollTrigger:!!st, stStart:st?.start||'top 80%', stEnd:st?.end||'bottom 20%',
+      scrub:!!st?.scrub, inTimeline };
+  }
+  let m;
+  while ((m=callRe.exec(code))!==null) { try { results.push(objToAnim(m[1],m[2],extractObj(m[3]),false)); } catch(e){} }
+  while ((m=tlRe.exec(code))!==null)   { try { results.push(objToAnim(m[1],m[2],extractObj(m[3]),true));  } catch(e){} }
+  return results;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ADD / EDIT / COMMIT
+// ══════════════════════════════════════════════════════════════════════════════
+
+function commitAnimation() {
+  if (!selectorInput.value.trim()) { showToast('Select an element first'); return; }
+  const page = activePage(); if (!page) { showToast('No page loaded'); return; }
+
+  snapshot();
+  const props = readFields();
+
+  if (state.editingId !== null) {
+    const idx = page.animations.findIndex(a => a.id === state.editingId);
+    if (idx !== -1) page.animations[idx] = {...page.animations[idx], ...props};
+    cancelEdit(); showToast(`Updated — ${props.selector}`);
+  } else {
+    page.animations.push({...props, id: Date.now()});
+    showToast(`Added — ${props.selector}`);
+  }
+  afterAnimationsChange(); showTab('layers');
+}
+
+function editAnimation(id) {
+  const page = activePage(); if (!page) return;
+  const anim = page.animations.find(a => a.id === id); if (!anim) return;
+  state.editingId = id; state.selectedAnimId = id;
+  emptyState.style.display='none'; animConfig.style.display='block';
+  populateFields(anim);
+  const idx = page.animations.findIndex(a => a.id === id);
+  editIndicator.style.display='flex';
+  editIndicatorText.textContent=`Editing #${idx+1} — ${anim.selector}`;
+  addAnimBtn.textContent='↩ Save changes'; commitBtn.textContent='Save Changes';
+  showTab('animate'); if (state.panelCollapsed) togglePanel();
+  renderTimeline(); renderAnimationsList();
+}
+
+function cancelEdit() {
+  state.editingId=null;
+  editIndicator.style.display='none';
+  addAnimBtn.textContent='+ Add to stack'; commitBtn.textContent='Add Animation';
+  renderTimeline(); renderAnimationsList();
+}
+
+function copyAnimValues(id) {
+  const page = activePage(); if (!page) return;
+  const anim = page.animations.find(a => a.id === id); if (!anim) return;
+  populateFields(anim); selectorInput.value=anim.selector;
+  emptyState.style.display='none'; animConfig.style.display='block';
+  state.editingId=null;
+  editIndicator.style.display='none';
+  addAnimBtn.textContent='+ Add to stack'; commitBtn.textContent='Add Animation';
+  if (state.panelCollapsed) togglePanel();
+  showTab('animate'); syncFromFields();
+  showToast('Values copied — modify and Add');
+}
+
+function deleteAnim(id) {
+  const page = activePage(); if (!page) return;
+  snapshot();
+  page.animations = page.animations.filter(a => a.id !== id);
+  if (state.editingId === id) cancelEdit();
+  if (state.selectedAnimId === id) state.selectedAnimId = null;
+  afterAnimationsChange();
+}
+
+function clearAllAnimations() {
+  const page = activePage(); if (!page) return;
+  snapshot(); page.animations = []; state.editingId=null; state.selectedAnimId=null;
+  cancelEdit(); afterAnimationsChange(); showToast('All animations cleared');
+}
+
+function selectAnim(id) {
+  state.selectedAnimId = id; renderTimeline(); renderAnimationsList();
+}
+
+function afterAnimationsChange(updateCodeEditor = true) {
+  renderTimeline(); renderAnimationsList(); updateAnimCount();
+  if (updateCodeEditor) codeEditor.value = generateFullCode();
+  updateCDN();
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TIMELINE RENDER
+// ══════════════════════════════════════════════════════════════════════════════
+
+const TL_SHADES = [
+  {bg:'rgba(255,255,255,.10)',bd:'rgba(255,255,255,.24)',fg:'#ccc'},
+  {bg:'rgba(255,255,255,.06)',bd:'rgba(255,255,255,.15)',fg:'#888'},
+  {bg:'rgba(255,255,255,.13)',bd:'rgba(255,255,255,.30)',fg:'#ddd'},
+  {bg:'rgba(255,255,255,.05)',bd:'rgba(255,255,255,.13)',fg:'#777'},
+  {bg:'rgba(255,255,255,.08)',bd:'rgba(255,255,255,.20)',fg:'#aaa'},
+];
+
+function renderTimeline() {
+  timelineBody.innerHTML = '';
+  const anims = getAnims();
+  if (!anims.length) {
+    timelineBody.innerHTML = '<div class="tl-empty">No animations — select elements and add animations</div>';
+    return;
+  }
+  const total = anims.reduce((acc,a) => Math.max(acc,(a.delay||0)+(a.duration||1)),0)||4;
+  anims.forEach((anim,i) => {
+    const c = TL_SHADES[i%TL_SHADES.length];
+    const isSel = anim.id===state.selectedAnimId || anim.id===state.editingId;
+    const row = document.createElement('div');
+    row.className = 'tl-row';
+
+    const label = document.createElement('div');
+    label.className = 'tl-row-label'+(isSel?' selected':'');
+    label.textContent = anim.selector; label.title = anim.selector;
+    label.onclick = () => { selectAnim(anim.id); editAnimation(anim.id); };
+
+    const track = document.createElement('div');
+    track.className = 'tl-track';
+
+    if (i===0) {
+      const cur = document.createElement('div');
+      cur.className='tl-cursor'; cur.id='tl-cursor-main'; cur.style.left='0%';
+      track.appendChild(cur);
+    }
+
+    const block = document.createElement('div');
+    block.className = 'tl-block'+(isSel?' selected':'');
+    block.style.cssText=`left:${((anim.delay||0)/total*100).toFixed(2)}%;width:${Math.max((anim.duration||1)/total*100,3).toFixed(2)}%;background:${c.bg};border:1px solid ${c.bd};color:${c.fg}`;
+    block.textContent = `${anim.method}·${anim.duration}s`;
+    block.title = `${anim.selector} — ${anim.duration}s ${anim.ease}`;
+    block.onclick = () => { selectAnim(anim.id); editAnimation(anim.id); };
+    track.appendChild(block);
+
+    row.appendChild(label); row.appendChild(track);
+    timelineBody.appendChild(row);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// LAYERS LIST — drag-to-reorder
+// ══════════════════════════════════════════════════════════════════════════════
+
+function renderAnimationsList() {
+  const list = document.getElementById('animations-list');
+  const anims = getAnims();
+  if (!anims.length) {
+    list.innerHTML='<div class="empty-state"><div class="empty-icon">≡</div><div class="empty-title">No animations</div><div class="empty-desc">Select elements and add animations.</div></div>';
+    return;
+  }
+  list.innerHTML='';
+  anims.forEach((anim,i) => {
+    const isSel = anim.id===state.selectedAnimId||anim.id===state.editingId;
+    const item = document.createElement('div');
+    item.className='anim-item'+(isSel?' selected':'');
+    item.draggable=true;
+    item.innerHTML=`
+      <div class="anim-item-drag-handle" title="Drag to reorder">⋮⋮</div>
+      <div class="anim-item-content">
+        <div class="anim-item-header">
+          <span class="anim-item-selector">${anim.selector}</span>
+          <span class="anim-item-type">gsap.${anim.method}</span>
+        </div>
+        <div class="anim-item-desc">${buildDesc(anim)}</div>
+        <div class="anim-item-actions">
+          <button class="icon-btn" onclick="editAnimation(${anim.id})">✎ Edit</button>
+          <button class="icon-btn" onclick="copyAnimValues(${anim.id})">⎘ Copy</button>
+          <button class="icon-btn" onclick="previewAnim(${i})">▶</button>
+          <button class="icon-btn" onclick="deleteAnim(${anim.id})">✕</button>
+        </div>
+      </div>`;
+    item.addEventListener('dragstart', e => { state.dragSrcIndex=i; item.classList.add('dragging-item'); e.dataTransfer.effectAllowed='move'; });
+    item.addEventListener('dragend',   () => { item.classList.remove('dragging-item'); list.querySelectorAll('.anim-item').forEach(el=>el.classList.remove('drag-over-item')); });
+    item.addEventListener('dragover',  e => { e.preventDefault(); item.classList.add('drag-over-item'); });
+    item.addEventListener('dragleave', () => item.classList.remove('drag-over-item'));
+    item.addEventListener('drop', e => {
+      e.preventDefault(); item.classList.remove('drag-over-item');
+      const src=state.dragSrcIndex, dest=i;
+      if (src===null||src===dest) return;
+      const page=activePage(); if(!page) return;
+      snapshot();
+      const a=[...page.animations];
+      const [moved]=a.splice(src,1); a.splice(dest,0,moved);
+      page.animations=a; state.dragSrcIndex=null;
+      afterAnimationsChange();
+    });
+    list.appendChild(item);
+  });
+}
+
+function buildDesc(a) {
+  const p=[];
+  if(a.y!==0)p.push(`y:${a.y}`); if(a.x!==0)p.push(`x:${a.x}`);
+  if(a.scale!==1)p.push(`scale:${a.scale}`); if(a.opacity!==1)p.push(`op:${a.opacity}`);
+  if(a.rotation!==0)p.push(`rot:${a.rotation}`);
+  p.push(`${a.duration}s`,a.ease.split('.')[0]);
+  if(a.scrollTrigger)p.push('ST'); if(a.inTimeline)p.push('TL');
+  return p.join(' · ');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CODE GENERATION
+// ══════════════════════════════════════════════════════════════════════════════
+
+function buildAnimObj(p) {
+  const o={};
+  if(p.x!==0)o.x=p.x; if(p.y!==0)o.y=p.y; if(p.scale!==1)o.scale=p.scale;
+  if(p.opacity!==1)o.opacity=p.opacity; if(p.rotation!==0)o.rotation=p.rotation;
+  o.duration=p.duration; if(p.delay>0)o.delay=p.delay; o.ease=p.ease;
+  if(p.stagger>0)o.stagger=p.stagger;
+  if(p.scrollTrigger){const st={trigger:p.selector,start:p.stStart,end:p.stEnd};if(p.scrub)st.scrub=true;o.scrollTrigger=st;}
+  return o;
+}
+function objToCode(obj,ind='  '){
+  return Object.entries(obj).map(([k,v])=>{
+    if(typeof v==='object'&&v!==null){const inn=Object.entries(v).map(([k2,v2])=>`${ind}  ${k2}: ${JSON.stringify(v2)},`).join('\n');return `${ind}${k}: {\n${inn}\n${ind}},`;}
+    return `${ind}${k}: ${typeof v==='string'?`"${v}"`:v},`;
+  }).join('\n');
+}
+function animToCode(anim){
+  const props=objToCode(buildAnimObj(anim));
+  if(anim.inTimeline){const ind=props.split('\n').map(l=>'    '+l).join('\n');return `  .from("${anim.selector}", {\n${ind}\n  })`;}
+  return `gsap.${anim.method}("${anim.selector}", {\n${props}\n});`;
+}
+function generateFullCode(){
+  const anims=getAnims();
+  if(!anims.length) return '// No animations added yet.\n// Import a page, select elements, and add animations.';
+  const lines=[];
+  const usesST=anims.some(a=>a.scrollTrigger);
+  const standalone=anims.filter(a=>!a.inTimeline);
+  const tlItems=anims.filter(a=>a.inTimeline);
+  if(usesST)lines.push('gsap.registerPlugin(ScrollTrigger);','');
+  standalone.forEach(a=>lines.push(animToCode(a),''));
+  if(tlItems.length){lines.push('const tl = gsap.timeline();','','tl');tlItems.forEach((a,i)=>lines.push(animToCode(a)+(i===tlItems.length-1?';':'')));lines.push('');}
+  return lines.join('\n').trim();
+}
+function updateCDN(){
+  const anims=getAnims();
+  const usesST=anims.some(a=>a.scrollTrigger)||state.scrollTriggerOn;
+  const cdn=document.getElementById('cdn-output');
+  let html=`<span class="cm">&lt;!-- GSAP --&gt;</span>\n<span class="str">&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"&gt;&lt;/script&gt;</span>`;
+  if(usesST)html+=`\n<span class="str">&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"&gt;&lt;/script&gt;</span>`;
+  cdn.innerHTML=html;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PREVIEW (sent to iframe via postMessage)
+// ══════════════════════════════════════════════════════════════════════════════
+
+function previewAll(){
+  const anims=getAnims();
+  if(!anims.length){showToast('No animations');return;}
+  sendToFrame('PREVIEW_ALL',{anims});
+  // Animate timeline cursor
+  const cur=document.getElementById('tl-cursor-main');
+  if(cur){cur.style.transition='none';cur.style.left='0%';setTimeout(()=>{cur.style.transition='left 2s linear';cur.style.left='100%';},50);}
+  showToast('Playing…');
+}
+function previewAnim(i){
+  const anims=getAnims(); const a=anims[i]; if(!a) return;
+  sendToFrame('PREVIEW_ANIM',{anim:a});
+  showToast(`Previewing ${a.selector}`);
+}
+function resetAll(){
+  sendToFrame('RESET_ALL');
+  const cur=document.getElementById('tl-cursor-main');
+  if(cur){cur.style.transition='none';cur.style.left='0%';}
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TABS + MISC
+// ══════════════════════════════════════════════════════════════════════════════
+
+function showTab(name){
+  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.panel-tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+name+'-content').classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name==='code'){codeEditor.value=generateFullCode();updateCDN();}
+  if(name==='layers')renderAnimationsList();
+}
+function updateRange(slider,valId,sfx){document.getElementById(valId).textContent=parseFloat(slider.value).toFixed(1)+sfx;}
+function updateAnimCount(){const n=getAnims().length;document.getElementById('anim-count').textContent=`${n} animation${n!==1?'s':''}`;}
+function setStatus(msg){document.getElementById('status-text').textContent=msg;}
+function showToast(msg){
+  toast.textContent=msg; toast.classList.add('show');
+  clearTimeout(window._tt); window._tt=setTimeout(()=>toast.classList.remove('show'),2200);
+}
+function copyCode(){
+  navigator.clipboard.writeText(generateFullCode()).then(()=>showToast('Code copied')).catch(()=>showToast('Copy failed'));
+}
+function downloadCode(){
+  const blob=new Blob([generateFullCode()],{type:'text/javascript'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='gsap-animations.js'; a.click();
+}
+function copyCDN(){
+  const usesST=getAnims().some(a=>a.scrollTrigger)||state.scrollTriggerOn;
+  let s=`<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"><\/script>`;
+  if(usesST)s+=`\n<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"><\/script>`;
+  navigator.clipboard.writeText(s).then(()=>showToast('CDN tags copied')).catch(()=>{});
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// KEYBOARD
+// ══════════════════════════════════════════════════════════════════════════════
+
+document.addEventListener('keydown', e => {
+  const meta = e.metaKey||e.ctrlKey;
+  if (e.key==='Escape')               { clearSelected(); cancelEdit(); }
+  if (e.key==='s'&&meta)              { e.preventDefault(); toggleSelectMode(); }
+  if (e.key==='p'&&meta)              { e.preventDefault(); previewAll(); }
+  if (e.key==='['&&meta)              { e.preventDefault(); togglePanel(); }
+  if (e.key==='z'&&meta&&!e.shiftKey) { e.preventDefault(); undo(); }
+  if (e.key==='z'&&meta&&e.shiftKey)  { e.preventDefault(); redo(); }
+  if (e.key==='Enter'&&e.shiftKey&&document.activeElement!==codeEditor) commitAnimation();
+  if (e.key==='i'&&meta)              { e.preventDefault(); openImportModal(); }
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════════════════════════════════
+
+showWelcomeScreen();
+updateCDN();
+renderAnimationsList();
+updateUndoButtons();
+updatePageCount();
+
+</script>
+</body>
+</html>
