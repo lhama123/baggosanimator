@@ -263,15 +263,15 @@ function sendToFrame(type, data = {}) {
 // ══════════════════════════════════════════════════════════════════════════════
 
 function showHoverHighlight(selector, rect) {
-  const frameRect = frame.getBoundingClientRect();
+  // overlay-layer is position:absolute inside .demo-site, which the iframe
+  // also fills completely. So rect coords from the frame (viewport-relative,
+  // scroll-adjusted) map directly onto the overlay — no frameRect offset needed.
+  const top = rect.top - rect.scrollY;
   hoverHighlight.style.display = 'block';
-  hoverHighlight.style.left    = (frameRect.left + rect.left) + 'px';
-  hoverHighlight.style.top     = (frameRect.top  + rect.top - rect.scrollY) + 'px';
+  hoverHighlight.style.left    = rect.left + 'px';
+  hoverHighlight.style.top     = top + 'px';
   hoverHighlight.style.width   = rect.width  + 'px';
   hoverHighlight.style.height  = rect.height + 'px';
-  // reposition label above
-  const labelTop = (frameRect.top + rect.top - rect.scrollY - 22);
-  hoverHighlight.style.top = Math.max(frameRect.top + 2, (frameRect.top + rect.top - rect.scrollY)) + 'px';
   hoverLabel.textContent = selector;
 }
 
@@ -279,8 +279,8 @@ function handleSelect(selector, rect) {
   state.selectedSelector = selector;
   selectorInput.value    = selector;
 
-  emptyState.style.display        = 'none';
-  animConfig.style.display        = 'block';
+  emptyState.style.display         = 'none';
+  animConfig.style.display         = 'block';
   instructionOverlay.style.display = 'none';
 
   if (state.panelCollapsed) togglePanel();
@@ -291,16 +291,17 @@ function handleSelect(selector, rect) {
 
 function showSelectedHighlight(selector, rect) {
   selectedHighlights.innerHTML = '';
-  const frameRect = frame.getBoundingClientRect();
-  const top = frameRect.top + rect.top - rect.scrollY;
+  const top = rect.top - rect.scrollY;
 
   const div = document.createElement('div');
   div.className = 'selected-highlight';
-  div.style.cssText = `left:${frameRect.left + rect.left}px;top:${Math.max(frameRect.top+2, top)}px;width:${rect.width}px;height:${rect.height}px`;
+  div.style.cssText = `left:${rect.left}px;top:${top}px;width:${rect.width}px;height:${rect.height}px`;
 
   const lbl = document.createElement('div');
-  lbl.className = 'selected-label'; lbl.textContent = selector;
-  div.appendChild(lbl); selectedHighlights.appendChild(div);
+  lbl.className = 'selected-label';
+  lbl.textContent = selector;
+  div.appendChild(lbl);
+  selectedHighlights.appendChild(div);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
