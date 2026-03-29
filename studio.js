@@ -146,6 +146,40 @@ const FRAME_SCRIPT = `
     if (e.data.type === 'PREVIEW_ANIM') runPreview(e.data.anim);
     if (e.data.type === 'PREVIEW_ALL')  runAllPreviews(e.data.anims);
     if (e.data.type === 'RESET_ALL')    resetAll();
+
+    // Live preview: parent sends code as string, frame injects it as a <script> tag.
+    // Using postMessage avoids contentDocument cross-origin restrictions entirely.
+    if (e.data.type === 'INJECT_LIVE') {
+      try {
+        var old = document.getElementById('__gsap_live__');
+        if (old) old.remove();
+        var tag = document.createElement('script');
+        tag.id = '__gsap_live__';
+        tag.textContent = e.data.code;
+        document.body.appendChild(tag);
+      } catch(err) {
+        window.parent.postMessage({ type: 'LIVE_ERROR', message: 'Inject: ' + err.message }, '*');
+      }
+    }
+
+    if (e.data.type === 'RESET_LIVE') {
+      try {
+        if (window.gsap) {
+          window.gsap.killTweensOf('*');
+          if (window.ScrollTrigger) {
+            window.ScrollTrigger.getAll().forEach(function(t) { t.kill(); });
+          }
+        }
+        document.querySelectorAll('*').forEach(function(el) {
+          el.style.transform = '';
+          el.style.opacity = '';
+          el.style.visibility = '';
+        });
+        var s = document.getElementById('__gsap_live__');
+        if (s) s.remove();
+        window.parent.postMessage({ type: 'RESET_DONE' }, '*');
+      } catch(err) {}
+    }
   });
 
   // Hover
@@ -1524,7 +1558,7 @@ function injectLiveGSAP() {
   const loadBlock = usesST
     ? [
         '    loadScript("' + GSAP_CDN + '", function() {',
-        '      loadScript("' + ST_CDN + '", function() {',
+        '      loadScript("' + SCROLLTRIGGER_CDN + '", function() {',
         '        run();',
         '      });',
         '    });',
@@ -1573,44 +1607,13 @@ function injectLiveGSAP() {
     '})();',
   ].join('\n')
 
-  try {
-    const doc = frame.contentDocument || frame.contentWindow.document;
-    const old = doc.getElementById('__gsap_studio_live__');
-    if (old) old.remove();
-    const tag = doc.createElement('script');
-    tag.id = '__gsap_studio_live__';
-    tag.textContent = bootScript;
-    doc.body.appendChild(tag);
-  } catch(e) {
-    showToast('Inject failed: ' + e.message);
-    exitLiveMode();
-  }
+  // Deliver via postMessage so the frame's own script tag handles injection.
+  // This works regardless of file:// vs http:// origin context.
+  sendToFrame('INJECT_LIVE', { code: bootScript });
 }
 
 function resetLive() {
-  const killScript = [
-    '(function() {',
-    '  if (window.gsap) {',
-    '    try { window.gsap.killTweensOf("*"); } catch(e) {}',
-    '    if (window.ScrollTrigger) {',
-    '      try { window.ScrollTrigger.getAll().forEach(function(t){t.kill();}); } catch(e) {}',
-    '    }',
-    '  }',
-    '  document.querySelectorAll("*").forEach(function(el) {',
-    '    el.style.transform = el.style.opacity = el.style.visibility = "";',
-    '  });',
-    '  var s = document.getElementById("__gsap_studio_live__");',
-    '  if (s) s.remove();',
-    '})();',
-  ].join('\n');
-
-  try {
-    const doc = frame.contentDocument || frame.contentWindow.document;
-    const tag = doc.createElement('script');
-    tag.textContent = killScript;
-    doc.body.appendChild(tag);
-    setTimeout(() => tag.remove(), 200);
-  } catch(e) {}
+  sendToFrame('RESET_LIVE');
   showToast('Animations reset');
 }
 
