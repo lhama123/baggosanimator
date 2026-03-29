@@ -1150,7 +1150,10 @@ function populateFields(p) {
   setSl('duration-slider','duration-val',p.duration??1,'s');
   setSl('delay-slider','delay-val',p.delay??0,'s');
   const e=document.getElementById('ease-input');
-  for(const o of e.options) if(o.value===p.ease){e.value=p.ease;break;}
+  let easeFound = false;
+  for(const o of e.options) if(o.value===p.ease){ e.value=p.ease; easeFound=true; break; }
+  // If not in list, set value directly — browser keeps it as a custom value
+  if (!easeFound && p.ease) e.value = p.ease;
   document.getElementById('gsap-method').value = p.method||'from';
   state.scrollTriggerOn  = !!p.scrollTrigger;
   state.scrubOn          = !!p.scrub;
