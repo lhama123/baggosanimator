@@ -31,8 +31,8 @@
     </div>
     <span class="mode-badge" id="mode-badge">PREVIEW</span>
     <button class="btn" id="toggle-select-btn" onclick="toggleSelectMode()">⊹ Select</button>
-    <button class="btn" onclick="previewAll()">▶ Preview</button>
-    <button class="btn" onclick="resetAll()">↺ Reset</button>
+    <button class="btn" id="live-preview-btn" onclick="toggleLivePreview()" title="Inject real GSAP into page and preview ScrollTrigger live (⌘P)">▶ Live Preview</button>
+    <button class="btn" id="reset-btn" onclick="resetLive()" title="Kill all GSAP animations">↺ Reset</button>
     <button class="btn btn-primary" onclick="showTab('code')">Export JS</button>
   </div>
 </div>
@@ -83,6 +83,13 @@
       </div>
 
       <!-- Collapse tab -->
+      <!-- Live preview badge — visible when GSAP is injected -->
+      <div class="live-badge" id="live-badge" style="display:none">
+        <span class="live-dot"></span>
+        GSAP LIVE
+        <span class="live-scroll-hint" id="live-scroll-hint"></span>
+      </div>
+
       <div class="collapse-tab" id="collapse-tab" onclick="togglePanel()" title="Toggle panel ⌘[">›</div>
     </div>
 

@@ -233,6 +233,56 @@ body {
 }
 .collapse-tab:hover { background:var(--surface3); color:var(--text2); }
 
+/* ── LIVE PREVIEW BADGE ──────────────────────────────────────────────────── */
+
+.live-badge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 160;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(17,17,17,.92);
+  border: 1px solid rgba(168,85,247,.5);
+  border-radius: 20px;
+  padding: 5px 14px 5px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #c084fc;
+  pointer-events: none;
+  box-shadow: 0 0 20px rgba(168,85,247,.2);
+}
+
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 8px #a855f7;
+  animation: live-pulse 1.4s ease infinite;
+}
+@keyframes live-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.4; transform:scale(.7); }
+}
+
+.live-scroll-hint {
+  color: var(--text3);
+  font-weight: 400;
+  letter-spacing: .3px;
+  font-size: 9px;
+}
+
+/* Live Preview active state for topbar button */
+.btn#live-preview-btn.live-active {
+  background: rgba(168,85,247,.15);
+  border-color: rgba(168,85,247,.5);
+  color: #c084fc;
+}
+
 /* ── TIMELINE ────────────────────────────────────────────────────────────── */
 
 .timeline-section {
@@ -663,8 +713,8 @@ input[type="range"]:hover::-webkit-slider-thumb { background:var(--text); }
     </div>
     <span class="mode-badge" id="mode-badge">PREVIEW</span>
     <button class="btn" id="toggle-select-btn" onclick="toggleSelectMode()">⊹ Select</button>
-    <button class="btn" onclick="previewAll()">▶ Preview</button>
-    <button class="btn" onclick="resetAll()">↺ Reset</button>
+    <button class="btn" id="live-preview-btn" onclick="toggleLivePreview()" title="Inject real GSAP into page and preview ScrollTrigger live (⌘P)">▶ Live Preview</button>
+    <button class="btn" id="reset-btn" onclick="resetLive()" title="Kill all GSAP animations">↺ Reset</button>
     <button class="btn btn-primary" onclick="showTab('code')">Export JS</button>
   </div>
 </div>
@@ -715,6 +765,13 @@ input[type="range"]:hover::-webkit-slider-thumb { background:var(--text); }
       </div>
 
       <!-- Collapse tab -->
+      <!-- Live preview badge — visible when GSAP is injected -->
+      <div class="live-badge" id="live-badge" style="display:none">
+        <span class="live-dot"></span>
+        GSAP LIVE
+        <span class="live-scroll-hint" id="live-scroll-hint"></span>
+      </div>
+
       <div class="collapse-tab" id="collapse-tab" onclick="togglePanel()" title="Toggle panel ⌘[">›</div>
     </div>
 
@@ -1123,6 +1180,7 @@ const state = {
 
   // iframe bridge
   frameReady:       false,
+  liveMode:         false,
   hoverEl:          null,   // {selector, rect}
   selections:        [],   // [{selector, rect}] — multi-select array
 };
@@ -1378,6 +1436,19 @@ window.addEventListener('message', e => {
     case 'NAVIGATE':
       handleFrameNavigate(d.href);
       break;
+
+    case 'LIVE_INFO': {
+      const hint = document.getElementById('live-scroll-hint');
+      if (hint) {
+        const canScroll = d.scrollHeight > d.clientHeight + 50;
+        hint.textContent = canScroll ? '— scroll to trigger' : '— page too short to scroll';
+      }
+      break;
+    }
+
+    case 'LIVE_ERROR':
+      showToast('GSAP error: ' + d.message);
+      break;
   }
 });
 
@@ -1503,6 +1574,7 @@ function switchPage(id) {
   state.selectedAnimId = null;
   state.selections     = [];
   state.frameReady     = false;
+  if (typeof exitLiveMode === 'function') exitLiveMode();
 
   clearSelected();
   renderPageTabs();
@@ -2359,6 +2431,7 @@ function afterAnimationsChange(updateCodeEditor = true) {
   renderTimeline(); renderAnimationsList(); updateAnimCount();
   if (updateCodeEditor) codeEditor.value = generateFullCode();
   updateCDN();
+  if (typeof maybeSyncLive === 'function') maybeSyncLive();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2541,24 +2614,185 @@ function updateCDN(){
 // PREVIEW (sent to iframe via postMessage)
 // ══════════════════════════════════════════════════════════════════════════════
 
-function previewAll(){
-  const anims=getAnims();
-  if(!anims.length){showToast('No animations');return;}
-  sendToFrame('PREVIEW_ALL',{anims});
-  // Animate timeline cursor
-  const cur=document.getElementById('tl-cursor-main');
-  if(cur){cur.style.transition='none';cur.style.left='0%';setTimeout(()=>{cur.style.transition='left 2s linear';cur.style.left='100%';},50);}
-  showToast('Playing…');
+// ═══════════════════════════════════════════════════════════════
+// LIVE PREVIEW — injects real GSAP into the iframe document
+// ═══════════════════════════════════════════════════════════════
+
+const GSAP_CDN         = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
+const SCROLLTRIGGER_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js';
+
+function toggleLivePreview() {
+  if (!activePage()) { showToast('Import a page first'); return; }
+  if (!getAnims().length) { showToast('No animations to preview'); return; }
+
+  if (state.liveMode) {
+    injectLiveGSAP();
+    showToast('Live preview updated');
+  } else {
+    state.liveMode = true;
+    document.getElementById('live-preview-btn').classList.add('live-active');
+    document.getElementById('live-preview-btn').textContent = '▶ Update Live';
+    document.getElementById('live-badge').style.display = 'flex';
+    injectLiveGSAP();
+    showToast('GSAP injected — scroll to trigger animations');
+  }
 }
-function previewAnim(i){
-  const anims=getAnims(); const a=anims[i]; if(!a) return;
-  sendToFrame('PREVIEW_ANIM',{anim:a});
-  showToast(`Previewing ${a.selector}`);
+
+function injectLiveGSAP() {
+  const anims  = getAnims();
+  if (!anims.length) return;
+  const usesST = anims.some(a => a.scrollTrigger);
+  const code   = generateFullCode();
+
+  // Indent the user code for embedding inside a function body
+  const indented = code.split('\n').map(l => '      ' + l).join('\n');
+
+  const stRegister = usesST ? '      gsap.registerPlugin(ScrollTrigger);' : '';
+  const stRefresh  = usesST
+    ? [
+        '      ScrollTrigger.refresh();',
+        '      window.parent.postMessage({',
+        '        type: "LIVE_INFO",',
+        '        scrollHeight: document.documentElement.scrollHeight,',
+        '        clientHeight: window.innerHeight',
+        '      }, "*");',
+      ].join('\n')
+    : '';
+
+  const loadBlock = usesST
+    ? [
+        '    loadScript("' + GSAP_CDN + '", function() {',
+        '      loadScript("' + ST_CDN + '", function() {',
+        '        run();',
+        '      });',
+        '    });',
+      ].join('\n')
+    : [
+        '    loadScript("' + GSAP_CDN + '", function() {',
+        '      run();',
+        '    });',
+      ].join('\n');
+
+  const alreadyLoaded = usesST
+    ? 'window.gsap && window.ScrollTrigger'
+    : 'window.gsap';
+
+  const bootScript = [
+    '(function() {',
+    '  // Kill any existing GSAP context',
+    '  if (window.gsap) {',
+    '    try { window.gsap.killTweensOf("*"); } catch(e) {}',
+    '    if (window.ScrollTrigger) {',
+    '      try { window.ScrollTrigger.getAll().forEach(function(t){t.kill();}); } catch(e) {}',
+    '    }',
+    '  }',
+    '',
+    '  function run() {',
+    '    try {',
+    stRegister,
+    indented,
+    stRefresh,
+    '    } catch(err) {',
+    '      window.parent.postMessage({ type: "LIVE_ERROR", message: err.message }, "*");',
+    '    }',
+    '  }',
+    '',
+    '  function loadScript(src, cb) {',
+    '    var s = document.createElement("script");',
+    '    s.src = src; s.onload = cb;',
+    '    document.head.appendChild(s);',
+    '  }',
+    '',
+    '  if (' + alreadyLoaded + ') {',
+    '    run();',
+    '  } else {',
+    loadBlock,
+    '  }',
+    '})();',
+  ].join('\n')
+
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const old = doc.getElementById('__gsap_studio_live__');
+    if (old) old.remove();
+    const tag = doc.createElement('script');
+    tag.id = '__gsap_studio_live__';
+    tag.textContent = bootScript;
+    doc.body.appendChild(tag);
+  } catch(e) {
+    showToast('Inject failed: ' + e.message);
+    exitLiveMode();
+  }
 }
-function resetAll(){
+
+function resetLive() {
+  const killScript = [
+    '(function() {',
+    '  if (window.gsap) {',
+    '    try { window.gsap.killTweensOf("*"); } catch(e) {}',
+    '    if (window.ScrollTrigger) {',
+    '      try { window.ScrollTrigger.getAll().forEach(function(t){t.kill();}); } catch(e) {}',
+    '    }',
+    '  }',
+    '  document.querySelectorAll("*").forEach(function(el) {',
+    '    el.style.transform = el.style.opacity = el.style.visibility = "";',
+    '  });',
+    '  var s = document.getElementById("__gsap_studio_live__");',
+    '  if (s) s.remove();',
+    '})();',
+  ].join('\n');
+
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const tag = doc.createElement('script');
+    tag.textContent = killScript;
+    doc.body.appendChild(tag);
+    setTimeout(() => tag.remove(), 200);
+  } catch(e) {}
+  showToast('Animations reset');
+}
+
+function exitLiveMode() {
+  state.liveMode = false;
+  const btn = document.getElementById('live-preview-btn');
+  btn.classList.remove('live-active');
+  btn.textContent = '▶ Live Preview';
+  document.getElementById('live-badge').style.display = 'none';
+  const hint = document.getElementById('live-scroll-hint');
+  if (hint) hint.textContent = '';
+}
+
+// Re-inject with debounce when animations change while live
+function maybeSyncLive() {
+  if (!state.liveMode) return;
+  clearTimeout(window._liveTimer);
+  window._liveTimer = setTimeout(injectLiveGSAP, 900);
+}
+
+// LIVE_INFO and LIVE_ERROR handled in main postMessage bridge below
+
+// CSS fallback preview (legacy — used by per-row ▶ buttons in layers)
+function previewAll() {
+  if (state.liveMode) { injectLiveGSAP(); return; }
+  const anims = getAnims();
+  if (!anims.length) { showToast('No animations'); return; }
+  sendToFrame('PREVIEW_ALL', { anims });
+  const cur = document.getElementById('tl-cursor-main');
+  if (cur) { cur.style.transition='none'; cur.style.left='0%'; setTimeout(()=>{ cur.style.transition='left 2s linear'; cur.style.left='100%'; }, 50); }
+  showToast('Playing\u2026');
+}
+
+function previewAnim(i) {
+  const anims = getAnims(); const a = anims[i]; if (!a) return;
+  sendToFrame('PREVIEW_ANIM', { anim: a });
+  showToast('Previewing ' + a.selector);
+}
+
+function resetAll() {
+  if (state.liveMode) { resetLive(); return; }
   sendToFrame('RESET_ALL');
-  const cur=document.getElementById('tl-cursor-main');
-  if(cur){cur.style.transition='none';cur.style.left='0%';}
+  const cur = document.getElementById('tl-cursor-main');
+  if (cur) { cur.style.transition='none'; cur.style.left='0%'; }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -2603,7 +2837,7 @@ document.addEventListener('keydown', e => {
   const meta = e.metaKey||e.ctrlKey;
   if (e.key==='Escape')               { clearSelected(); cancelEdit(); }
   if (e.key==='s'&&meta)              { e.preventDefault(); toggleSelectMode(); }
-  if (e.key==='p'&&meta)              { e.preventDefault(); previewAll(); }
+  if (e.key==='p'&&meta)              { e.preventDefault(); toggleLivePreview(); }
   if (e.key==='['&&meta)              { e.preventDefault(); togglePanel(); }
   if (e.key==='z'&&meta&&!e.shiftKey) { e.preventDefault(); undo(); }
   if (e.key==='z'&&meta&&e.shiftKey)  { e.preventDefault(); redo(); }

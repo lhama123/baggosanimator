@@ -42,6 +42,7 @@ const state = {
 
   // iframe bridge
   frameReady:       false,
+  liveMode:         false,
   hoverEl:          null,   // {selector, rect}
   selections:        [],   // [{selector, rect}] — multi-select array
 };
@@ -297,6 +298,19 @@ window.addEventListener('message', e => {
     case 'NAVIGATE':
       handleFrameNavigate(d.href);
       break;
+
+    case 'LIVE_INFO': {
+      const hint = document.getElementById('live-scroll-hint');
+      if (hint) {
+        const canScroll = d.scrollHeight > d.clientHeight + 50;
+        hint.textContent = canScroll ? '— scroll to trigger' : '— page too short to scroll';
+      }
+      break;
+    }
+
+    case 'LIVE_ERROR':
+      showToast('GSAP error: ' + d.message);
+      break;
   }
 });
 
@@ -422,6 +436,7 @@ function switchPage(id) {
   state.selectedAnimId = null;
   state.selections     = [];
   state.frameReady     = false;
+  if (typeof exitLiveMode === 'function') exitLiveMode();
 
   clearSelected();
   renderPageTabs();
@@ -1278,6 +1293,7 @@ function afterAnimationsChange(updateCodeEditor = true) {
   renderTimeline(); renderAnimationsList(); updateAnimCount();
   if (updateCodeEditor) codeEditor.value = generateFullCode();
   updateCDN();
+  if (typeof maybeSyncLive === 'function') maybeSyncLive();
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1460,24 +1476,185 @@ function updateCDN(){
 // PREVIEW (sent to iframe via postMessage)
 // ══════════════════════════════════════════════════════════════════════════════
 
-function previewAll(){
-  const anims=getAnims();
-  if(!anims.length){showToast('No animations');return;}
-  sendToFrame('PREVIEW_ALL',{anims});
-  // Animate timeline cursor
-  const cur=document.getElementById('tl-cursor-main');
-  if(cur){cur.style.transition='none';cur.style.left='0%';setTimeout(()=>{cur.style.transition='left 2s linear';cur.style.left='100%';},50);}
-  showToast('Playing…');
+// ═══════════════════════════════════════════════════════════════
+// LIVE PREVIEW — injects real GSAP into the iframe document
+// ═══════════════════════════════════════════════════════════════
+
+const GSAP_CDN         = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js';
+const SCROLLTRIGGER_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js';
+
+function toggleLivePreview() {
+  if (!activePage()) { showToast('Import a page first'); return; }
+  if (!getAnims().length) { showToast('No animations to preview'); return; }
+
+  if (state.liveMode) {
+    injectLiveGSAP();
+    showToast('Live preview updated');
+  } else {
+    state.liveMode = true;
+    document.getElementById('live-preview-btn').classList.add('live-active');
+    document.getElementById('live-preview-btn').textContent = '▶ Update Live';
+    document.getElementById('live-badge').style.display = 'flex';
+    injectLiveGSAP();
+    showToast('GSAP injected — scroll to trigger animations');
+  }
 }
-function previewAnim(i){
-  const anims=getAnims(); const a=anims[i]; if(!a) return;
-  sendToFrame('PREVIEW_ANIM',{anim:a});
-  showToast(`Previewing ${a.selector}`);
+
+function injectLiveGSAP() {
+  const anims  = getAnims();
+  if (!anims.length) return;
+  const usesST = anims.some(a => a.scrollTrigger);
+  const code   = generateFullCode();
+
+  // Indent the user code for embedding inside a function body
+  const indented = code.split('\n').map(l => '      ' + l).join('\n');
+
+  const stRegister = usesST ? '      gsap.registerPlugin(ScrollTrigger);' : '';
+  const stRefresh  = usesST
+    ? [
+        '      ScrollTrigger.refresh();',
+        '      window.parent.postMessage({',
+        '        type: "LIVE_INFO",',
+        '        scrollHeight: document.documentElement.scrollHeight,',
+        '        clientHeight: window.innerHeight',
+        '      }, "*");',
+      ].join('\n')
+    : '';
+
+  const loadBlock = usesST
+    ? [
+        '    loadScript("' + GSAP_CDN + '", function() {',
+        '      loadScript("' + ST_CDN + '", function() {',
+        '        run();',
+        '      });',
+        '    });',
+      ].join('\n')
+    : [
+        '    loadScript("' + GSAP_CDN + '", function() {',
+        '      run();',
+        '    });',
+      ].join('\n');
+
+  const alreadyLoaded = usesST
+    ? 'window.gsap && window.ScrollTrigger'
+    : 'window.gsap';
+
+  const bootScript = [
+    '(function() {',
+    '  // Kill any existing GSAP context',
+    '  if (window.gsap) {',
+    '    try { window.gsap.killTweensOf("*"); } catch(e) {}',
+    '    if (window.ScrollTrigger) {',
+    '      try { window.ScrollTrigger.getAll().forEach(function(t){t.kill();}); } catch(e) {}',
+    '    }',
+    '  }',
+    '',
+    '  function run() {',
+    '    try {',
+    stRegister,
+    indented,
+    stRefresh,
+    '    } catch(err) {',
+    '      window.parent.postMessage({ type: "LIVE_ERROR", message: err.message }, "*");',
+    '    }',
+    '  }',
+    '',
+    '  function loadScript(src, cb) {',
+    '    var s = document.createElement("script");',
+    '    s.src = src; s.onload = cb;',
+    '    document.head.appendChild(s);',
+    '  }',
+    '',
+    '  if (' + alreadyLoaded + ') {',
+    '    run();',
+    '  } else {',
+    loadBlock,
+    '  }',
+    '})();',
+  ].join('\n')
+
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const old = doc.getElementById('__gsap_studio_live__');
+    if (old) old.remove();
+    const tag = doc.createElement('script');
+    tag.id = '__gsap_studio_live__';
+    tag.textContent = bootScript;
+    doc.body.appendChild(tag);
+  } catch(e) {
+    showToast('Inject failed: ' + e.message);
+    exitLiveMode();
+  }
 }
-function resetAll(){
+
+function resetLive() {
+  const killScript = [
+    '(function() {',
+    '  if (window.gsap) {',
+    '    try { window.gsap.killTweensOf("*"); } catch(e) {}',
+    '    if (window.ScrollTrigger) {',
+    '      try { window.ScrollTrigger.getAll().forEach(function(t){t.kill();}); } catch(e) {}',
+    '    }',
+    '  }',
+    '  document.querySelectorAll("*").forEach(function(el) {',
+    '    el.style.transform = el.style.opacity = el.style.visibility = "";',
+    '  });',
+    '  var s = document.getElementById("__gsap_studio_live__");',
+    '  if (s) s.remove();',
+    '})();',
+  ].join('\n');
+
+  try {
+    const doc = frame.contentDocument || frame.contentWindow.document;
+    const tag = doc.createElement('script');
+    tag.textContent = killScript;
+    doc.body.appendChild(tag);
+    setTimeout(() => tag.remove(), 200);
+  } catch(e) {}
+  showToast('Animations reset');
+}
+
+function exitLiveMode() {
+  state.liveMode = false;
+  const btn = document.getElementById('live-preview-btn');
+  btn.classList.remove('live-active');
+  btn.textContent = '▶ Live Preview';
+  document.getElementById('live-badge').style.display = 'none';
+  const hint = document.getElementById('live-scroll-hint');
+  if (hint) hint.textContent = '';
+}
+
+// Re-inject with debounce when animations change while live
+function maybeSyncLive() {
+  if (!state.liveMode) return;
+  clearTimeout(window._liveTimer);
+  window._liveTimer = setTimeout(injectLiveGSAP, 900);
+}
+
+// LIVE_INFO and LIVE_ERROR handled in main postMessage bridge below
+
+// CSS fallback preview (legacy — used by per-row ▶ buttons in layers)
+function previewAll() {
+  if (state.liveMode) { injectLiveGSAP(); return; }
+  const anims = getAnims();
+  if (!anims.length) { showToast('No animations'); return; }
+  sendToFrame('PREVIEW_ALL', { anims });
+  const cur = document.getElementById('tl-cursor-main');
+  if (cur) { cur.style.transition='none'; cur.style.left='0%'; setTimeout(()=>{ cur.style.transition='left 2s linear'; cur.style.left='100%'; }, 50); }
+  showToast('Playing\u2026');
+}
+
+function previewAnim(i) {
+  const anims = getAnims(); const a = anims[i]; if (!a) return;
+  sendToFrame('PREVIEW_ANIM', { anim: a });
+  showToast('Previewing ' + a.selector);
+}
+
+function resetAll() {
+  if (state.liveMode) { resetLive(); return; }
   sendToFrame('RESET_ALL');
-  const cur=document.getElementById('tl-cursor-main');
-  if(cur){cur.style.transition='none';cur.style.left='0%';}
+  const cur = document.getElementById('tl-cursor-main');
+  if (cur) { cur.style.transition='none'; cur.style.left='0%'; }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1522,7 +1699,7 @@ document.addEventListener('keydown', e => {
   const meta = e.metaKey||e.ctrlKey;
   if (e.key==='Escape')               { clearSelected(); cancelEdit(); }
   if (e.key==='s'&&meta)              { e.preventDefault(); toggleSelectMode(); }
-  if (e.key==='p'&&meta)              { e.preventDefault(); previewAll(); }
+  if (e.key==='p'&&meta)              { e.preventDefault(); toggleLivePreview(); }
   if (e.key==='['&&meta)              { e.preventDefault(); togglePanel(); }
   if (e.key==='z'&&meta&&!e.shiftKey) { e.preventDefault(); undo(); }
   if (e.key==='z'&&meta&&e.shiftKey)  { e.preventDefault(); redo(); }

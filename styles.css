@@ -226,6 +226,56 @@ body {
 }
 .collapse-tab:hover { background:var(--surface3); color:var(--text2); }
 
+/* ── LIVE PREVIEW BADGE ──────────────────────────────────────────────────── */
+
+.live-badge {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 160;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(17,17,17,.92);
+  border: 1px solid rgba(168,85,247,.5);
+  border-radius: 20px;
+  padding: 5px 14px 5px 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #c084fc;
+  pointer-events: none;
+  box-shadow: 0 0 20px rgba(168,85,247,.2);
+}
+
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #a855f7;
+  box-shadow: 0 0 8px #a855f7;
+  animation: live-pulse 1.4s ease infinite;
+}
+@keyframes live-pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:.4; transform:scale(.7); }
+}
+
+.live-scroll-hint {
+  color: var(--text3);
+  font-weight: 400;
+  letter-spacing: .3px;
+  font-size: 9px;
+}
+
+/* Live Preview active state for topbar button */
+.btn#live-preview-btn.live-active {
+  background: rgba(168,85,247,.15);
+  border-color: rgba(168,85,247,.5);
+  color: #c084fc;
+}
+
 /* ── TIMELINE ────────────────────────────────────────────────────────────── */
 
 .timeline-section {
