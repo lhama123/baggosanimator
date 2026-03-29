@@ -885,7 +885,14 @@ function toggleSelectMode() {
   badge.classList.toggle('active', state.selectMode);
   btn.classList.toggle('active',   state.selectMode);
   sendToFrame('SET_SELECT_MODE', { value: state.selectMode });
-  if (!state.selectMode) hoverHighlight.style.display = 'none';
+  if (!state.selectMode) {
+    hoverHighlight.style.display     = 'none';
+    selectedHighlights.innerHTML     = '';   // clear selection borders
+    const badge = document.getElementById('selection-count');
+    if (badge) badge.style.display   = 'none';
+    // Keep state.selections intact so selector value stays in panel,
+    // but remove the visual overlay rings from the canvas
+  }
 }
 
 function clearSelected() {
@@ -1525,8 +1532,9 @@ function toggleLivePreview() {
   if (!getAnims().length) { showToast('No animations to preview'); return; }
 
   if (state.liveMode) {
-    injectLiveGSAP();
-    showToast('Live preview updated');
+    sendToFrame('RESET_LIVE');       // kill existing tweens first
+    setTimeout(injectLiveGSAP, 80); // then re-inject after a short drain
+    showToast('Live preview reset & updated');
   } else {
     state.liveMode = true;
     document.getElementById('live-preview-btn').classList.add('live-active');
