@@ -737,7 +737,121 @@ function loadHtmlFile(file) {
 
 function loadDemoPage() {
   const html = getDemoHTML();
-  addPage(createPage('Demo — Luminary', html, ''));
+  const page = createPage('Demo — Luminary', html, '');
+
+  // Pre-bake a full animation stack so user sees layers, timeline & code immediately
+  const T = Date.now();
+  page.animations = [
+
+    // 1. Nav slides down from top
+    {
+      id: T+1, selector: 'nav', method: 'from',
+      x:0, y:-30, scale:1, opacity:0, rotation:0,
+      duration:0.7, delay:0, ease:'power2.out', stagger:0,
+      scrollTrigger:false, stStart:'top 80%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none none', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'', inTimeline:false,
+    },
+
+    // 2. Hero tag fades up
+    {
+      id: T+2, selector:'.hero-tag', method:'from',
+      x:0, y:20, scale:1, opacity:0, rotation:0,
+      duration:0.6, delay:0.2, ease:'power2.out', stagger:0,
+      scrollTrigger:false, stStart:'top 80%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none none', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'', inTimeline:false,
+    },
+
+    // 3. Hero title — big dramatic entrance
+    {
+      id: T+3, selector:'.hero-title', method:'from',
+      x:0, y:80, scale:1, opacity:0, rotation:0,
+      duration:1.1, delay:0.35, ease:'power3.out', stagger:0,
+      scrollTrigger:false, stStart:'top 80%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none none', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'', inTimeline:false,
+    },
+
+    // 4. Hero subtitle
+    {
+      id: T+4, selector:'.hero-subtitle', method:'from',
+      x:0, y:40, scale:1, opacity:0, rotation:0,
+      duration:0.8, delay:0.55, ease:'power2.out', stagger:0,
+      scrollTrigger:false, stStart:'top 80%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none none', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'', inTimeline:false,
+    },
+
+    // 5. CTA button — scale + overshoot
+    {
+      id: T+5, selector:'.cta-button', method:'from',
+      x:0, y:0, scale:0.8, opacity:0, rotation:0,
+      duration:0.7, delay:0.75, ease:'back.out(1.7)', stagger:0,
+      scrollTrigger:false, stStart:'top 80%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none none', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'', inTimeline:false,
+    },
+
+    // 6. Section title — ScrollTrigger
+    {
+      id: T+6, selector:'.section-title', method:'from',
+      x:0, y:50, scale:1, opacity:0, rotation:0,
+      duration:0.8, delay:0, ease:'power2.out', stagger:0,
+      scrollTrigger:true, stStart:'top 85%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none reverse', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'.section-title', inTimeline:false,
+    },
+
+    // 7. Cards — staggered ScrollTrigger
+    {
+      id: T+7, selector:'.card', method:'from',
+      x:0, y:60, scale:1, opacity:0, rotation:0,
+      duration:0.7, delay:0, ease:'power2.out', stagger:0.15,
+      scrollTrigger:true, stStart:'top 85%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none reverse', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'.cards-grid', inTimeline:false,
+    },
+
+    // 8. Feature rows — slide in from sides, in a timeline
+    {
+      id: T+8, selector:'.feature-copy', method:'from',
+      x:-60, y:0, scale:1, opacity:0, rotation:0,
+      duration:0.9, delay:0, ease:'power2.out', stagger:0,
+      scrollTrigger:true, stStart:'top 80%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none reverse', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'.features', inTimeline:true,
+    },
+
+    // 9. Feature visuals — slide from right
+    {
+      id: T+9, selector:'.feature-visual', method:'from',
+      x:60, y:0, scale:1, opacity:0, rotation:0,
+      duration:0.9, delay:0, ease:'power2.out', stagger:0,
+      scrollTrigger:true, stStart:'top 80%', stEnd:'bottom 20%',
+      scrub:false, scrubAmount:1,
+      stToggleActions:'play none none reverse', stPin:false, stMarkers:false, stOnce:false,
+      stTrigger:'.features', inTimeline:true,
+    },
+
+  ];
+
+  addPage(page);
+
+  // After page loads, open the Layers tab so user sees the stack immediately,
+  // then switch to Code so they see the generated output — quick tour on load
+  setTimeout(() => {
+    showTab('layers');
+    setTimeout(() => showTab('code'), 1200);
+  }, 900);
 }
 
 function getDemoHTML() {
